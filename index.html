@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Relay - Group Coordination</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .app-viewport { height: 100dvh; height: 100svh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        #sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #sidebar-overlay { transition: opacity 0.3s ease; }
+        
+        .status-free { background-color: #f0fdf4; border-color: #22c55e; color: #166534; }
+        .status-shift { background-color: #fef2f2; border-color: #ef4444; color: #991b1b; }
+        .status-unavail { background-color: #fff7ed; border-color: #f97316; color: #9a3412; }
+        
+        .selected-day { border-color: #4f46e5 !important; border-width: 2px !important; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+        .mini-icon { width: 10px; height: 10px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .relay-item-active { background-color: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+        
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Custom Toast */
+        #toast { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s; }
+    </style>
+</head>
+<body class="bg-slate-50 flex justify-center items-center">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-6 left-6 right-6 z-[200] bg-slate-900 text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-2xl opacity-0 pointer-events-none -translate-y-10">
+        Notification Message
+    </div>
+
+    <!-- Screen 0: Global Loader -->
+    <div id="loading-screen" class="fixed inset-0 bg-white z-[150] flex flex-col items-center justify-center">
+        <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">RELAY</p>
+    </div>
+
+    <!-- Screen 1: Auth (Login/Signup) -->
+    <div id="auth-container" class="app-viewport w-full max-w-md bg-white shadow-2xl relative hidden px-8 pt-12 overflow-y-auto no-scrollbar">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-black tracking-tighter text-indigo-600 italic">RELAY.</h1>
+            <p id="auth-subtitle" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mt-2">Connect & Coordinate</p>
+        </div>
+
+        <!-- Login View -->
+        <div id="login-view" class="space-y-4 fade-in">
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Email</label>
+                <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm outline-none focus:border-indigo-300" placeholder="name@email.com">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Password</label>
+                <input type="password" id="login-password" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm outline-none focus:border-indigo-300" placeholder="••••••••">
+            </div>
+            <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all mt-4">Sign In</button>
+            <div class="flex flex-col items-center gap-4 pt-6">
+                <button onclick="toggleAuthMode('signup')" class="text-[10px] font-black text-indigo-600 uppercase tracking-wider">New Here? Create Account</button>
+            </div>
+        </div>
+
+        <!-- Signup View -->
+        <div id="signup-view" class="space-y-4 hidden pb-10 fade-in">
+            <div class="flex flex-col items-center mb-6">
+                <label for="signup-photo" class="cursor-pointer">
+                    <div class="w-24 h-24 rounded-full bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center relative overflow-hidden group">
+                        <img id="signup-photo-preview" src="" class="hidden w-full h-full object-cover">
+                        <i data-lucide="camera" id="signup-photo-icon" class="w-8 h-8 text-slate-300 group-hover:text-indigo-400 transition-colors"></i>
+                    </div>
+                </label>
+                <input type="file" id="signup-photo" class="hidden" accept="image/*" onchange="previewSignupPhoto(event)">
+                <span class="text-[8px] font-black text-slate-300 uppercase mt-2">Set Profile Picture</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-400 uppercase ml-1">First Name</label>
+                    <input type="text" id="signup-first" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm" placeholder="Alex">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Last Name</label>
+                    <input type="text" id="signup-last" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm" placeholder="Johnson">
+                </div>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Email</label>
+                <input type="email" id="signup-email" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm" placeholder="name@email.com">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Password</label>
+                <input type="password" id="signup-password" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-sm" placeholder="Min. 6 characters">
+            </div>
+            <button onclick="handleSignup()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all mt-4">Create Account</button>
+            <button onclick="toggleAuthMode('login')" class="w-full text-[10px] font-black text-indigo-600 uppercase py-2">Back to Login</button>
+        </div>
+    </div>
+
+    <!-- Screen 2: Relay Choice (No Relay yet) -->
+    <div id="relay-setup-container" class="app-viewport w-full max-w-md bg-white shadow-2xl relative hidden px-8 flex flex-col justify-center fade-in">
+        <div class="text-center mb-10">
+            <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="layers" class="w-10 h-10"></i>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Your Relays</h2>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-2">Connect with a team to start</p>
+        </div>
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Join with Code</label>
+                <input type="text" id="relay-join-code" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-center text-xl font-mono font-black tracking-[0.4em] uppercase outline-none focus:border-indigo-300" placeholder="00000">
+            </div>
+            <button onclick="handleJoinRelayFromSetup()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Join Relay</button>
+            
+            <div class="flex items-center my-8">
+                <div class="flex-1 border-t border-slate-100"></div>
+                <span class="px-4 text-[9px] font-black text-slate-300 uppercase">OR</span>
+                <div class="flex-1 border-t border-slate-100"></div>
+            </div>
+            
+            <button onclick="handleCreateRelay()" class="w-full border-2 border-slate-100 text-slate-600 py-4 rounded-2xl font-black uppercase text-xs tracking-widest active:bg-slate-50 transition-all">Create New Relay</button>
+            <button onclick="handleLogout()" class="w-full text-[10px] font-black text-rose-500 uppercase py-8">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- Screen 3: Dashboard -->
+    <div id="dashboard-container" class="app-viewport w-full max-w-md bg-white shadow-2xl relative hidden">
+        
+        <!-- Sidebar Overlay -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+        <!-- Sidebar / Drawer -->
+        <div id="sidebar" class="fixed top-0 left-0 h-full w-[310px] bg-white z-50 -translate-x-full shadow-2xl flex flex-col p-6">
+            <button onclick="toggleSidebar()" class="self-end p-2 text-slate-400 mb-2"><i data-lucide="x" class="w-6 h-6"></i></button>
+
+            <!-- User Info -->
+            <div class="flex flex-col items-center mb-8 text-center px-4">
+                <div class="w-20 h-20 rounded-full bg-indigo-50 border-2 border-white shadow-sm overflow-hidden mb-4 relative">
+                    <img id="sidebar-img-display" src="" class="hidden w-full h-full object-cover">
+                    <i id="sidebar-icon-placeholder" data-lucide="user" class="w-8 h-8 text-indigo-200 m-6"></i>
+                </div>
+                <h3 id="display-name" class="font-black text-slate-800 uppercase text-sm tracking-tight">Alex Johnson</h3>
+                <p id="display-email" class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest truncate w-full">alex@relay.app</p>
+            </div>
+
+            <!-- Relay Management -->
+            <nav class="flex-1 space-y-6 overflow-y-auto no-scrollbar pr-2">
+                <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                    <p class="text-[9px] font-black text-slate-400 uppercase mb-4 tracking-widest text-center border-b border-slate-200 pb-2">Active Relay</p>
+                    <div class="text-center mb-6">
+                        <p id="current-relay-display" class="text-2xl font-mono font-black text-indigo-600 uppercase tracking-[0.3em]">-----</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Your Relays</p>
+                            <div id="my-relays-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
+                                <!-- Relay buttons go here -->
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex flex-col gap-2">
+                            <input type="text" id="sidebar-join-input" class="w-full bg-white border border-slate-200 p-3 rounded-xl text-center text-xs font-bold uppercase tracking-widest outline-none focus:border-indigo-400" placeholder="JOIN CODE">
+                            <button onclick="handleJoinRelayFromSidebar()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">Join</button>
+                            <button onclick="handleCreateRelay()" class="w-full bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest active:bg-slate-50 transition-all">Create New</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-rose-50 text-rose-600 transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-black uppercase tracking-widest">Sign Out</span>
+                </button>
+            </nav>
+        </div>
+        
+        <!-- Header: Unified Profile + Dashboard -->
+        <header class="px-5 pt-10 pb-4 flex items-center justify-between shrink-0 border-b border-slate-50">
+            <button onclick="toggleSidebar()" class="flex items-center gap-3 outline-none group active:scale-95 transition-transform">
+                <div id="header-profile-thumb" class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 border border-indigo-100 overflow-hidden shadow-sm">
+                    <i data-lucide="user" class="w-5 h-5"></i>
+                </div>
+                <div class="flex flex-col text-left">
+                    <p class="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] leading-none mb-0.5">Welcome,</p>
+                    <span id="welcome-name" class="text-[12px] font-black text-indigo-600 uppercase tracking-tight leading-none">USER!</span>
+                </div>
+            </button>
+            <h2 class="text-sm font-black tracking-[0.3em] text-slate-800 uppercase leading-none">DASHBOARD</h2>
+        </header>
+
+        <!-- Main Dashboard Content -->
+        <main class="flex-1 px-5 py-4 flex flex-col justify-around overflow-hidden">
+            
+            <!-- Calendar Card -->
+            <section class="bg-slate-50 rounded-[2.5rem] p-6 border border-slate-200 shadow-sm flex flex-col min-h-[340px]">
+                <div class="flex items-center justify-between mb-5 px-1">
+                    <div class="flex items-center gap-2.5 text-indigo-600">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        <span id="current-month" class="font-black uppercase text-[11px] tracking-[0.2em]">MAY 2024</span>
+                    </div>
+                    <div id="active-relay-badge" class="text-[8px] font-black bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-widest">
+                        NONE
+                    </div>
+                </div>
+                
+                <!-- The Grid -->
+                <div class="grid grid-cols-7 gap-1.5" id="calendar-grid"></div>
+
+                <!-- Legend -->
+                <div class="mt-auto pt-4 border-t border-slate-200 grid grid-cols-3 gap-1 text-[7px] font-black uppercase tracking-wider text-slate-400">
+                    <div class="flex items-center gap-1.5"><div class="w-3.5 h-3.5 rounded bg-emerald-500 flex items-center justify-center"><i data-lucide="check" class="w-2 h-2 text-white"></i></div><span>All Free</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-3.5 h-3.5 rounded bg-red-500 flex items-center justify-center"><i data-lucide="clock" class="w-2 h-2 text-white"></i></div><span>Shift</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-3.5 h-3.5 rounded bg-orange-500 flex items-center justify-center"><i data-lucide="x" class="w-2 h-2 text-white"></i></div><span>Unavail</span></div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="w-full">
+                <div class="text-center mb-6">
+                    <p id="selected-date-label" class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.35em]">Select a day</p>
+                </div>
+                <div class="grid grid-cols-4 gap-4 px-1">
+                    <button onclick="updateStatus('shift')" class="flex flex-col items-center gap-2 group">
+                        <div class="w-full aspect-square bg-white border border-slate-200 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform group-active:bg-slate-50"><i data-lucide="clock" class="w-6 h-6 text-slate-600"></i></div>
+                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight">Shift</span>
+                    </button>
+                    <button onclick="updateStatus('free')" class="flex flex-col items-center gap-2 group">
+                        <div class="w-full aspect-square bg-white border border-emerald-500 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform group-active:bg-emerald-50"><i data-lucide="check-circle-2" class="w-6 h-6 text-emerald-500"></i></div>
+                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight">Free</span>
+                    </button>
+                    <button onclick="updateStatus('unavail')" class="flex flex-col items-center gap-2 group">
+                        <div class="w-full aspect-square bg-white border border-orange-500 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform group-active:bg-orange-50"><i data-lucide="x-circle" class="w-6 h-6 text-orange-500"></i></div>
+                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight leading-none">Unavail</span>
+                    </button>
+                    <button class="flex flex-col items-center gap-2 group">
+                        <div class="w-full aspect-square bg-indigo-600 rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-100 group-active:scale-90 transition-transform"><i data-lucide="send" class="w-5 h-5 text-white rotate-[-45deg] translate-x-0.5"></i></div>
+                        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-tighter">Plan</span>
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCustomToken, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config from Environment
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'relay-prod-v1';
+
+        // App State
+        let currentUser = null;
+        let userData = null;
+        let userRelays = [];
+        let activeRelayId = localStorage.getItem('active_relay_id');
+        let selectedDay = null;
+        let groupData = {};
+        let signupPhotoBase64 = null;
+        let unsubscribeStatuses = null;
+        let unsubscribeRelays = null;
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        // --- UTILS ---
+        window.showToast = (msg, duration = 3000) => {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-10');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-10');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, duration);
+        };
+
+        window.toggleSidebar = () => {
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebar-overlay');
+            sb.classList.toggle('-translate-x-full');
+            ov.classList.toggle('opacity-100');
+            ov.classList.toggle('pointer-events-none');
+        };
+
+        window.toggleAuthMode = (mode) => {
+            const login = document.getElementById('login-view');
+            const signup = document.getElementById('signup-view');
+            const subtitle = document.getElementById('auth-subtitle');
+            if (mode === 'signup') {
+                login.classList.add('hidden');
+                signup.classList.remove('hidden');
+                subtitle.innerText = "Create Your Profile";
+            } else {
+                signup.classList.add('hidden');
+                login.classList.remove('hidden');
+                subtitle.innerText = "Connect & Coordinate";
+            }
+        };
+
+        // --- AUTH LOGIC (RULE 3) ---
+        onAuthStateChanged(auth, async (user) => {
+            const loading = document.getElementById('loading-screen');
+            const authUI = document.getElementById('auth-container');
+            const setupUI = document.getElementById('relay-setup-container');
+            const dashUI = document.getElementById('dashboard-container');
+
+            [authUI, setupUI, dashUI].forEach(el => el.classList.add('hidden'));
+
+            if (user) {
+                currentUser = user;
+                try {
+                    // 1. Fetch Profile
+                    const profileSnap = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'));
+                    if (profileSnap.exists()) {
+                        userData = profileSnap.data();
+                        updateSidebarProfile();
+                        
+                        // 2. Fetch User Relays
+                        initRelayListeners();
+                    } else {
+                        // Profile missing? This shouldn't happen with the current flow, but handle gracefully
+                        authUI.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error("Auth Init Error:", e);
+                    authUI.classList.remove('hidden');
+                }
+            } else {
+                authUI.classList.remove('hidden');
+            }
+            loading.classList.add('hidden');
+            lucide.createIcons();
+        });
+
+        // --- RELAY LISTENERS ---
+        const initRelayListeners = () => {
+            if (unsubscribeRelays) unsubscribeRelays();
+            
+            const relaysRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'relays');
+            unsubscribeRelays = onSnapshot(relaysRef, (snapshot) => {
+                userRelays = [];
+                snapshot.forEach(doc => userRelays.push(doc.id));
+                
+                const setupUI = document.getElementById('relay-setup-container');
+                const dashUI = document.getElementById('dashboard-container');
+
+                if (userRelays.length === 0) {
+                    setupUI.classList.remove('hidden');
+                    dashUI.classList.add('hidden');
+                } else {
+                    setupUI.classList.add('hidden');
+                    dashUI.classList.remove('hidden');
+                    
+                    if (!activeRelayId || !userRelays.includes(activeRelayId)) {
+                        activeRelayId = userRelays[0];
+                        localStorage.setItem('active_relay_id', activeRelayId);
+                    }
+                    
+                    renderRelayList();
+                    updateHeaderAndBadge();
+                    setupGroupListener();
+                }
+            });
+        };
+
+        const setupGroupListener = () => {
+            if (unsubscribeStatuses) unsubscribeStatuses();
+            
+            const statusesRef = collection(db, 'artifacts', appId, 'public', 'data', 'relay_statuses');
+            unsubscribeStatuses = onSnapshot(statusesRef, (snapshot) => {
+                groupData = {};
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.relayId === activeRelayId) {
+                        groupData[doc.id] = data.availability || {};
+                    }
+                });
+                renderCalendar();
+            });
+        };
+
+        // --- UI UPDATES ---
+        const updateSidebarProfile = () => {
+            document.getElementById('display-name').innerText = `${userData.firstName} ${userData.lastName}`;
+            document.getElementById('display-email').innerText = userData.email;
+            document.getElementById('welcome-name').innerText = `${userData.firstName.toUpperCase()}!`;
+            if (userData.photo) {
+                document.getElementById('sidebar-img-display').src = userData.photo;
+                document.getElementById('sidebar-img-display').classList.remove('hidden');
+                document.getElementById('sidebar-icon-placeholder').classList.add('hidden');
+                document.getElementById('header-profile-thumb').innerHTML = `<img src="${userData.photo}" class="w-full h-full object-cover">`;
+            }
+        };
+
+        const renderRelayList = () => {
+            const list = document.getElementById('my-relays-list');
+            list.innerHTML = userRelays.map(code => `
+                <button onclick="switchRelay('${code}')" class="w-full text-left p-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${code === activeRelayId ? 'relay-item-active' : 'bg-white border-transparent text-slate-400'}">
+                    ${code}
+                </button>
+            `).join('');
+        };
+
+        const updateHeaderAndBadge = () => {
+            document.getElementById('current-relay-display').innerText = activeRelayId;
+            document.getElementById('active-relay-badge').innerText = activeRelayId;
+        };
+
+        window.switchRelay = (code) => {
+            activeRelayId = code;
+            localStorage.setItem('active_relay_id', code);
+            updateHeaderAndBadge();
+            renderRelayList();
+            setupGroupListener();
+            toggleSidebar();
+        };
+
+        // --- AUTH ACTIONS ---
+        window.handleLogin = async () => {
+            const e = document.getElementById('login-email').value;
+            const p = document.getElementById('login-password').value;
+            if (!e || !p) return showToast("Enter credentials");
+            try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { showToast(err.message.replace("Firebase:", "")); }
+        };
+
+        window.handleSignup = async () => {
+            const f = document.getElementById('signup-first').value.trim();
+            const l = document.getElementById('signup-last').value.trim();
+            const e = document.getElementById('signup-email').value.trim();
+            const p = document.getElementById('signup-password').value;
+            if (!f || !l || !e || p.length < 6) return showToast("Check your details");
+            
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, e, p);
+                const profileData = { firstName: f, lastName: l, email: e, photo: signupPhotoBase64 || '', createdAt: Date.now() };
+                await setDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), profileData);
+                userData = profileData;
+            } catch (err) { showToast(err.message.replace("Firebase:", "")); }
+        };
+
+        window.handleLogout = () => signOut(auth);
+
+        window.previewSignupPhoto = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    signupPhotoBase64 = e.target.result;
+                    document.getElementById('signup-photo-preview').src = signupPhotoBase64;
+                    document.getElementById('signup-photo-preview').classList.remove('hidden');
+                    document.getElementById('signup-photo-icon').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        // --- RELAY ACTIONS ---
+        const performJoin = async (code) => {
+            const codeClean = code.toUpperCase();
+            const relaySnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relays', codeClean));
+            if (!relaySnap.exists()) return showToast("Relay code invalid");
+            
+            await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'relays', codeClean), { joinedAt: Date.now() });
+            activeRelayId = codeClean;
+            localStorage.setItem('active_relay_id', activeRelayId);
+        };
+
+        window.handleJoinRelayFromSetup = () => performJoin(document.getElementById('relay-join-code').value);
+        window.handleJoinRelayFromSidebar = () => performJoin(document.getElementById('sidebar-join-input').value);
+
+        window.handleCreateRelay = async () => {
+            const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relays', code), { creator: currentUser.uid, createdAt: Date.now() });
+            await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'relays', code), { joinedAt: Date.now() });
+            activeRelayId = code;
+            localStorage.setItem('active_relay_id', activeRelayId);
+            showToast(`Created Relay: ${code}`);
+        };
+
+        // --- STATUS ACTIONS ---
+        window.updateStatus = async (type) => {
+            if (!selectedDay || !currentUser || !activeRelayId) return;
+            const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDay}`;
+            const statusRef = doc(db, 'artifacts', appId, 'public', 'data', 'relay_statuses', currentUser.uid);
+            
+            const currentMap = groupData[currentUser.uid] || {};
+            currentMap[dateKey] = type;
+            groupData[currentUser.uid] = currentMap;
+            renderCalendar();
+
+            await setDoc(statusRef, { relayId: activeRelayId, availability: currentMap, updatedAt: Date.now() }, { merge: true });
+        };
+
+        // --- CALENDAR RENDER ---
+        window.renderCalendar = () => {
+            const grid = document.getElementById('calendar-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            ['S','M','T','W','T','F','S'].forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'text-[10px] font-black text-center text-slate-300 pb-2 uppercase tracking-tighter';
+                el.innerText = d;
+                grid.appendChild(el);
+            });
+
+            document.getElementById('current-month').innerText = `${now.toLocaleString('default', { month: 'long' })} ${currentYear}`;
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateKey = `${currentYear}-${currentMonth + 1}-${i}`;
+                const statuses = Object.values(groupData).map(u => u[dateKey]).filter(s => s);
+                
+                let state = 'none';
+                if (statuses.length > 0) {
+                    if (statuses.includes('shift')) state = 'shift';
+                    else if (statuses.includes('unavail')) state = 'unavail';
+                    else state = 'free';
+                }
+
+                const el = document.createElement('div');
+                let sClass = 'bg-white border-slate-100 text-slate-700';
+                let icon = '';
+                if (state === 'free') { sClass = 'status-free border-emerald-500'; icon = 'check'; }
+                if (state === 'shift') { sClass = 'status-shift border-red-500'; icon = 'clock'; }
+                if (state === 'unavail') { sClass = 'status-unavail border-orange-500'; icon = 'x'; }
+
+                el.className = `calendar-day relative aspect-square rounded-2xl border flex items-center justify-center text-[11px] font-bold cursor-pointer transition-all ${sClass}`;
+                if (i === selectedDay) el.classList.add('selected-day');
+                el.innerHTML = `<span>${i}</span>`;
+                if (icon) el.innerHTML += `<div class="absolute bottom-1 right-1 opacity-50"><i data-lucide="${icon}" class="w-3 h-3"></i></div>`;
+                el.onclick = () => {
+                    selectedDay = i;
+                    document.getElementById('selected-date-label').innerText = `${now.toLocaleString('default', {month:'short'})} ${i}`;
+                    renderCalendar();
+                };
+                grid.appendChild(el);
+            }
+            lucide.createIcons();
+        };
+
+        // Init App (Fallback)
+        const checkAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try { await signInWithCustomToken(auth, __initial_auth_token); } catch (e) { /* onAuthStateChanged handles UI */ }
+            }
+        };
+        checkAuth();
+        renderCalendar();
+    </script>
+</body>
+</html>
