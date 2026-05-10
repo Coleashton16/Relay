@@ -49,8 +49,31 @@
         .tab-btn.active { color: var(--primary); }
         .tab-btn.active::after { content: ''; position: absolute; bottom: -8px; left: 0; right: 0; height: 2px; background: var(--primary); border-radius: 10px; }
 
-        .notif-badge { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: #EF4444; border-radius: 50%; border: 2px solid white; display: none; }
-        .notif-badge.active { display: block; }
+        .notif-badge { 
+            position: absolute; 
+            top: -6px; 
+            right: -6px; 
+            min-width: 20px; 
+            height: 20px; 
+            background: #EF4444; 
+            color: white; 
+            font-size: 10px; 
+            font-weight: 900;
+            border-radius: 50px; 
+            border: 2px solid white; 
+            display: none; 
+            align-items: center; 
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+            pointer-events: none;
+            animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .notif-badge.active { display: flex; }
+        
+        @keyframes badge-pop {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -80,7 +103,6 @@
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-3">Identity Verified Planning</p>
             </div>
 
-            <!-- Login View -->
             <div id="auth-login" class="space-y-4">
                 <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white" placeholder="Email Address">
                 <input type="password" id="login-pass" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white" placeholder="Password">
@@ -88,7 +110,6 @@
                 <button onclick="toggleAuth('signup')" class="w-full text-[10px] font-black text-indigo-600 uppercase tracking-widest pt-4">Create New Account</button>
             </div>
 
-            <!-- Signup View -->
             <div id="auth-signup" class="space-y-4 hidden overflow-y-auto no-scrollbar pb-10">
                 <div class="flex flex-col items-center mb-4">
                     <label for="signup-avatar" class="cursor-pointer group relative">
@@ -147,9 +168,10 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="openModal('modal-notifications')" class="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+                        <button onclick="openModal('modal-notifications')" class="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 transition-colors active:bg-slate-100">
                             <i data-lucide="bell" class="w-4 h-4"></i>
-                            <div id="notif-badge" class="notif-badge"></div>
+                            <!-- Updated Badge with placeholder for number -->
+                            <div id="notif-badge" class="notif-badge">0</div>
                         </button>
                         <button onclick="setScreen('screen-setup')" class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
                             <i data-lucide="grid" class="w-4 h-4"></i>
@@ -157,7 +179,6 @@
                     </div>
                 </div>
 
-                <!-- View Toggle -->
                 <div class="flex gap-8 px-2 border-t border-slate-50 pt-4">
                     <button onclick="switchDashTab('cal')" id="tab-cal" class="tab-btn active text-[10px] font-black uppercase tracking-[0.2em]">Calendar</button>
                     <button onclick="switchDashTab('agenda')" id="tab-agenda" class="tab-btn text-[10px] font-black uppercase tracking-[0.2em]">Agenda</button>
@@ -167,7 +188,6 @@
             <main class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-40">
                 <!-- CALENDAR VIEW SECTION -->
                 <div id="view-calendar" class="space-y-6">
-                    <!-- Calendar Card -->
                     <section class="premium-card p-6">
                         <div class="flex items-center justify-between mb-6">
                             <h3 id="cal-month" class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Month</h3>
@@ -182,7 +202,6 @@
                         <div id="cal-grid" class="grid grid-cols-7 gap-y-3 gap-x-1.5"></div>
                     </section>
 
-                    <!-- Day Details Card -->
                     <section class="premium-card p-6 min-h-[300px] flex flex-col">
                         <div id="day-empty" class="flex-1 flex flex-col items-center justify-center text-slate-300 py-10">
                             <i data-lucide="calendar" class="w-8 h-8 mb-3 opacity-20"></i>
@@ -194,7 +213,6 @@
                                 <p id="detail-date" class="text-xs font-black text-indigo-600 uppercase tracking-[0.4em]">Date Label</p>
                             </div>
 
-                            <!-- Consensus Logic UI -->
                             <div id="plan-section" class="mb-8">
                                 <button id="btn-propose" onclick="handlePropose()" class="w-full bg-indigo-600 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all">
                                     <i data-lucide="send" class="w-4 h-4 -rotate-45"></i> Propose Plan
@@ -209,7 +227,6 @@
                                         <div id="plan-count" class="text-2xl font-black text-slate-900 italic">0/0</div>
                                     </div>
 
-                                    <!-- Plan Detail Inputs (Only shown when confirmed) -->
                                     <div id="plan-confirmed-details" class="hidden space-y-3 pt-2 border-t border-slate-200">
                                         <div class="grid grid-cols-2 gap-2">
                                             <div class="space-y-1">
@@ -307,7 +324,6 @@
             </header>
 
             <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-20">
-                <!-- Profile Settings -->
                 <div class="premium-card p-6">
                     <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Identity Sync</h4>
                     <div class="flex items-center gap-4 mb-6">
@@ -326,7 +342,6 @@
                     <button onclick="saveProfile()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">Update Cloud Profile</button>
                 </div>
 
-                <!-- Relay Roster -->
                 <div class="premium-card p-6">
                     <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Relay Controls</h4>
                     <div class="bg-slate-900 rounded-3xl p-5 text-center mb-6 shadow-xl">
@@ -350,7 +365,7 @@
 
                 <div class="premium-card p-2 space-y-1">
                     <button onclick="handlePassReset()" class="w-full flex items-center justify-between p-5 text-slate-600 active:bg-slate-50 rounded-2xl transition-colors">
-                        <span class="text-[10px] font-black uppercase tracking-widest">Secure Password Reset</span>
+                        <span class="text-[10px] font-black uppercase tracking-widest">Reset Password</span>
                         <i data-lucide="key" class="w-4 h-4 opacity-30"></i>
                     </button>
                     <button onclick="handleLeave()" class="w-full flex items-center justify-between p-5 text-rose-500 active:bg-rose-50 rounded-2xl transition-colors">
@@ -358,7 +373,7 @@
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                     </button>
                     <button id="btn-delete" onclick="handleDelete()" class="w-full flex items-center justify-between p-5 text-rose-600 active:bg-rose-50 rounded-2xl transition-colors hidden">
-                        <span class="text-[10px] font-black uppercase tracking-widest">Terminate Relay (Admin)</span>
+                        <span class="text-[10px] font-black uppercase tracking-widest">Delete Relay</span>
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -462,11 +477,16 @@
             if (notifs.length === 0) {
                 list.innerHTML = `<div class="flex flex-col items-center justify-center py-10 opacity-20"><i data-lucide="bell-off" class="w-10 h-10 mb-4"></i><p class="text-[10px] font-black uppercase">No Alerts</p></div>`;
                 badge.classList.remove('active');
+                badge.innerText = '0';
                 lucide.createIcons();
                 return;
             }
 
+            // Update Numeric Badge
             badge.classList.add('active');
+            const count = notifs.length;
+            badge.innerText = count > 9 ? '9+' : count;
+
             list.innerHTML = notifs.map(n => {
                 const p = profiles[n.userId] || { firstName: 'Team' };
                 const time = new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -491,7 +511,6 @@
         };
 
         window.clearNotifs = async () => {
-            // Simplified: we'll just hide local for now, as mass deletion requires batching
             notifs = [];
             renderNotifs();
         };
