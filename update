@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Relay - Mobile Coordination</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --app-height: 100%; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: contain;
+            background-color: #f8fafc;
+            user-select: none;
+        }
+        .app-container {
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        
+        #sidebar { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        #sidebar-overlay { transition: opacity 0.3s ease; }
+        
+        /* Thumb-friendly interactions */
+        .status-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+        }
+        .status-btn:active { transform: scale(0.92); filter: brightness(0.9); }
+        
+        .selected-day { 
+            outline: 3px solid #6366f1;
+            outline-offset: -3px;
+            transform: scale(0.95);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .active-relay-card {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .slide-up { animation: slideUp 0.3s ease-out; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="flex justify-center">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-6 left-6 right-6 bg-slate-900/95 backdrop-blur text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-2xl opacity-0 pointer-events-none -translate-y-10 transition-all z-[200]">
+        Notification Message
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[250] hidden flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl scale-95 transition-transform duration-200">
+            <h3 class="text-xl font-black text-slate-800 mb-2">Wait a second...</h3>
+            <p id="confirm-msg" class="text-sm text-slate-500 mb-8 font-medium leading-relaxed">This will remove you from this relay permanently.</p>
+            <div class="flex flex-col gap-3">
+                <button id="confirm-btn" class="w-full py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-rose-100">Confirm Remove</button>
+                <button onclick="closeConfirm()" class="w-full py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em]">Go Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Loader -->
+    <div id="loading-screen" class="fixed inset-0 bg-white z-[300] flex flex-col items-center justify-center">
+        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+        <p class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.5em] animate-pulse">CONNECTING</p>
+    </div>
+
+    <div id="main-app" class="app-container w-full max-w-md bg-white shadow-2xl relative overflow-hidden">
+        
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/40 z-40 opacity-0 pointer-events-none"></div>
+        <div id="sidebar" class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] bg-white z-50 -translate-x-full shadow-[20px_0_60px_-15px_rgba(0,0,0,0.1)] flex flex-col">
+            <div class="p-8 pt-16 flex flex-col items-center text-center border-b border-slate-50">
+                <div id="sidebar-profile-img" class="w-24 h-24 rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-lg overflow-hidden mb-4 flex items-center justify-center">
+                    <i data-lucide="user" class="w-10 h-10 text-indigo-200"></i>
+                </div>
+                <h3 id="display-name" class="font-black text-slate-800 text-lg tracking-tight uppercase">---</h3>
+                <p id="display-email" class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">---</p>
+            </div>
+
+            <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-10">
+                <section>
+                    <div class="flex items-center justify-between mb-6 px-2">
+                        <h4 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">Manage Relays</h4>
+                        <button onclick="handleCreateRelay()" class="text-indigo-600 active:scale-90 transition-transform"><i data-lucide="plus-circle" class="w-6 h-6"></i></button>
+                    </div>
+                    <div id="my-relays-list" class="space-y-4">
+                        <!-- Relays appear here -->
+                    </div>
+                </section>
+
+                <section class="pb-10">
+                    <div class="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100">
+                        <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-4">Join by Code</p>
+                        <div class="flex gap-3">
+                            <input type="text" id="sidebar-join-input" class="flex-1 bg-white border border-indigo-100 p-4 rounded-2xl text-center text-sm font-black uppercase tracking-widest outline-none focus:ring-4 ring-indigo-50" placeholder="CODE">
+                            <button onclick="handleJoinRelayFromSidebar()" class="bg-indigo-600 text-white px-5 rounded-2xl shadow-md active:scale-90 transition-all"><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="p-8 safe-bottom">
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-3 p-5 rounded-2xl bg-slate-50 text-slate-400 active:bg-rose-50 active:text-rose-500 transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-black uppercase tracking-widest">Sign Out</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="auth-container" class="flex-1 overflow-y-auto no-scrollbar hidden">
+            <div class="p-12 pt-24 text-center">
+                <h1 class="text-6xl font-black tracking-tighter text-indigo-600 italic">RELAY.</h1>
+                <p id="auth-subtitle" class="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] mt-6 leading-relaxed">Nurses & Teams Unified</p>
+            </div>
+
+            <!-- Login View -->
+            <div id="login-view" class="px-10 pb-12 space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Email</label>
+                    <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-[2rem] text-sm focus:bg-white focus:ring-4 ring-indigo-50 transition-all outline-none shadow-sm" placeholder="nurse@hospital.com">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Password</label>
+                    <input type="password" id="login-password" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-[2rem] text-sm focus:bg-white focus:ring-4 ring-indigo-50 transition-all outline-none shadow-sm" placeholder="••••••••">
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white py-6 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-indigo-100 active:scale-[0.96] transition-all">Sign In</button>
+                <button onclick="toggleAuthMode('signup')" class="w-full text-[10px] font-black text-slate-400 uppercase py-6">New User? <span class="text-indigo-600">Register Profile</span></button>
+            </div>
+
+            <!-- Signup View -->
+            <div id="signup-view" class="px-10 pb-12 hidden space-y-5">
+                <div class="flex flex-col items-center mb-8">
+                    <label for="signup-photo" class="cursor-pointer group">
+                        <div class="w-32 h-32 rounded-[3rem] bg-slate-50 border-4 border-dashed border-slate-200 flex items-center justify-center relative overflow-hidden group-active:scale-95 transition-all">
+                            <img id="signup-photo-preview" src="" class="hidden w-full h-full object-cover">
+                            <i data-lucide="camera" id="signup-photo-icon" class="w-12 h-12 text-slate-300"></i>
+                        </div>
+                    </label>
+                    <input type="file" id="signup-photo" class="hidden" accept="image/*" onchange="previewSignupPhoto(event)">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="signup-first" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="First">
+                    <input type="text" id="signup-last" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Last">
+                </div>
+                <input type="email" id="signup-email" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Email Address">
+                <input type="password" id="signup-password" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Password (6+ chars)">
+                <button onclick="handleSignup()" class="w-full bg-indigo-600 text-white py-6 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-lg shadow-indigo-100 active:scale-95 transition-all">Create Account</button>
+                <button onclick="toggleAuthMode('login')" class="w-full text-[10px] font-black text-slate-400 uppercase py-4">Back to login</button>
+            </div>
+        </div>
+
+        <div id="dashboard-container" class="flex-1 flex flex-col hidden">
+            <!-- Header -->
+            <header class="px-8 pt-16 pb-6 flex items-center justify-between border-b border-slate-50 shrink-0">
+                <button onclick="toggleSidebar()" class="flex items-center gap-4">
+                    <div id="header-profile-thumb" class="w-12 h-12 rounded-[1.25rem] bg-indigo-50 overflow-hidden border border-indigo-100 shadow-sm flex items-center justify-center">
+                        <i data-lucide="user" class="w-6 h-6 text-indigo-300"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest">Active Relay</p>
+                        <h2 id="active-relay-name" class="text-sm font-black text-indigo-600 uppercase tracking-tight">NONE</h2>
+                    </div>
+                </button>
+                <div class="bg-slate-100 px-5 py-2.5 rounded-2xl">
+                   <p id="current-date-header" class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">MAY 2026</p>
+                </div>
+            </header>
+
+            <!-- Calendar Area -->
+            <main class="flex-1 p-6 overflow-y-auto no-scrollbar bg-slate-50/50">
+                <!-- Calendar Card -->
+                <div class="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 mb-8">
+                    <div class="grid grid-cols-7 gap-2 mb-6" id="calendar-header">
+                        <!-- Days of week -->
+                    </div>
+                    <div class="grid grid-cols-7 gap-2" id="calendar-grid">
+                        <!-- Dates -->
+                    </div>
+                    
+                    <div class="mt-10 flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-slate-300 px-2">
+                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Free</div>
+                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Shift</div>
+                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-orange-400"></span> Away</div>
+                    </div>
+                </div>
+
+                <!-- Team Detail Panel -->
+                <div id="day-detail-panel" class="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 pb-12">
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="space-y-0.5">
+                            <h3 id="selected-day-label" class="text-sm font-black text-slate-800 uppercase tracking-[0.1em]">Select a day</h3>
+                            <p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Team Availability</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                            <i data-lucide="users" class="w-5 h-5 text-indigo-200"></i>
+                        </div>
+                    </div>
+                    <div id="availability-list" class="space-y-4">
+                        <div class="text-center py-12 px-6">
+                            <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 opacity-50">
+                                <i data-lucide="calendar-days" class="w-8 h-8 text-slate-300"></i>
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">Tap a date to see who is on shift</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Bottom Status Controls -->
+            <footer class="p-8 pb-12 bg-white border-t border-slate-50 shadow-[0_-15px_40px_rgba(0,0,0,0.03)] shrink-0 safe-bottom">
+                <div class="grid grid-cols-3 gap-4">
+                    <button onclick="updateStatus('free')" class="status-btn flex flex-col items-center gap-3">
+                        <div class="w-full py-5 bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] flex items-center justify-center shadow-sm">
+                            <i data-lucide="check-circle" class="w-7 h-7 text-emerald-500"></i>
+                        </div>
+                        <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Available</span>
+                    </button>
+                    <button onclick="updateStatus('shift')" class="status-btn flex flex-col items-center gap-3">
+                        <div class="w-full py-5 bg-rose-50 border-2 border-rose-100 rounded-[2rem] flex items-center justify-center shadow-sm">
+                            <i data-lucide="clock" class="w-7 h-7 text-rose-500"></i>
+                        </div>
+                        <span class="text-[10px] font-black text-rose-600 uppercase tracking-widest">On Shift</span>
+                    </button>
+                    <button onclick="updateStatus('unavail')" class="status-btn flex flex-col items-center gap-3">
+                        <div class="w-full py-5 bg-orange-50 border-2 border-orange-100 rounded-[2rem] flex items-center justify-center shadow-sm">
+                            <i data-lucide="slash" class="w-7 h-7 text-orange-500"></i>
+                        </div>
+                        <span class="text-[10px] font-black text-orange-600 uppercase tracking-widest">Busy</span>
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCustomToken, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyD8APWhg6rpIAslOAAnjpZM5tDoUAgsKBY",
+            authDomain: "relay-8ad82.firebaseapp.com",
+            projectId: "relay-8ad82",
+            storageBucket: "relay-8ad82.firebasestorage.app",
+            messagingSenderId: "912829496349",
+            appId: "1:912829496349:web:e9130d03f97d5e6ffa1af4"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'relay-nurses-v2';
+
+        // Original logic variables
+        let currentUser = null;
+        let userData = null;
+        let userRelays = [];
+        let activeRelayId = localStorage.getItem('relay_active_id');
+        let selectedDay = null;
+        let relayUsersData = {}; 
+        let relayStatusesData = {}; 
+        let signupPhotoBase64 = null;
+        
+        let unsubscribeUserRelays = null;
+        let unsubscribeStatuses = null;
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        window.showToast = (msg, duration = 3000) => {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0', '-translate-y-10', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-10', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, duration);
+        };
+
+        window.toggleSidebar = () => {
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebar-overlay');
+            sb.classList.toggle('-translate-x-full');
+            ov.classList.toggle('opacity-100');
+            ov.classList.toggle('pointer-events-none');
+        };
+
+        window.toggleAuthMode = (mode) => {
+            document.getElementById('login-view').classList.toggle('hidden', mode === 'signup');
+            document.getElementById('signup-view').classList.toggle('hidden', mode === 'login');
+            document.getElementById('auth-subtitle').innerText = mode === 'signup' ? "Create Professional Profile" : "Nurses & Teams Unified";
+        };
+
+        window.openConfirm = (msg, onConfirm) => {
+            const modal = document.getElementById('confirm-modal');
+            const btn = document.getElementById('confirm-btn');
+            document.getElementById('confirm-msg').innerText = msg;
+            modal.classList.remove('hidden');
+            btn.onclick = () => {
+                onConfirm();
+                closeConfirm();
+            };
+        };
+
+        window.closeConfirm = () => document.getElementById('confirm-modal').classList.add('hidden');
+
+        onAuthStateChanged(auth, async (user) => {
+            const loader = document.getElementById('loading-screen');
+            const authUI = document.getElementById('auth-container');
+            const dashUI = document.getElementById('dashboard-container');
+
+            try {
+                if (user) {
+                    currentUser = user;
+                    const profileSnap = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'));
+                    if (profileSnap.exists()) {
+                        userData = profileSnap.data();
+                        updateSidebarProfile();
+                        initDataListeners();
+                        authUI.classList.add('hidden');
+                        dashUI.classList.remove('hidden');
+                    } else {
+                        authUI.classList.remove('hidden');
+                        dashUI.classList.add('hidden');
+                    }
+                } else {
+                    currentUser = null;
+                    authUI.classList.remove('hidden');
+                    dashUI.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                loader.classList.add('hidden');
+                lucide.createIcons();
+            }
+        });
+
+        const initDataListeners = () => {
+            if (unsubscribeUserRelays) unsubscribeUserRelays();
+            const relaysRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'relays');
+            
+            unsubscribeUserRelays = onSnapshot(relaysRef, (snapshot) => {
+                userRelays = [];
+                snapshot.forEach(doc => userRelays.push(doc.id));
+                
+                if (userRelays.length > 0) {
+                    if (!activeRelayId || !userRelays.includes(activeRelayId)) {
+                        activeRelayId = userRelays[0];
+                        localStorage.setItem('relay_active_id', activeRelayId);
+                    }
+                    updateActiveRelayUI();
+                    setupTeamListener();
+                } else {
+                    activeRelayId = null;
+                    updateActiveRelayUI();
+                    renderAvailabilityList();
+                }
+                renderSidebarRelayList();
+            }, (err) => console.error("Relays Listen Error:", err));
+        };
+
+        const setupTeamListener = async () => {
+            if (unsubscribeStatuses) unsubscribeStatuses();
+            if (!activeRelayId) return;
+
+            const statusesRef = collection(db, 'artifacts', appId, 'public', 'data', 'relay_statuses');
+            
+            unsubscribeStatuses = onSnapshot(statusesRef, async (snapshot) => {
+                relayStatusesData = {};
+                const userFetchPromises = [];
+                
+                snapshot.forEach(snap => {
+                    const data = snap.data();
+                    if (data.relayId === activeRelayId) {
+                        relayStatusesData[snap.id] = data.availability || {};
+                        if (!relayUsersData[snap.id]) {
+                            userFetchPromises.push(
+                                getDoc(doc(db, 'artifacts', appId, 'users', snap.id, 'profile', 'data'))
+                                    .then(p => { if(p.exists()) relayUsersData[snap.id] = p.data(); })
+                            );
+                        }
+                    }
+                });
+
+                if (userFetchPromises.length > 0) await Promise.all(userFetchPromises);
+                renderCalendar();
+                renderAvailabilityList();
+            }, (err) => console.error("Statuses Listen Error:", err));
+        };
+
+        const updateSidebarProfile = () => {
+            document.getElementById('display-name').innerText = `${userData.firstName} ${userData.lastName}`;
+            document.getElementById('display-email').innerText = userData.email;
+            if (userData.photo) {
+                document.getElementById('sidebar-profile-img').innerHTML = `<img src="${userData.photo}" class="w-full h-full object-cover">`;
+                document.getElementById('header-profile-thumb').innerHTML = `<img src="${userData.photo}" class="w-full h-full object-cover">`;
+            }
+        };
+
+        const updateActiveRelayUI = () => {
+            document.getElementById('active-relay-name').innerText = activeRelayId || 'JOIN A RELAY';
+        };
+
+        const renderSidebarRelayList = () => {
+            const list = document.getElementById('my-relays-list');
+            if (userRelays.length === 0) {
+                list.innerHTML = `<p class="text-[10px] text-slate-300 italic text-center py-10 uppercase font-black tracking-widest">No relays yet</p>`;
+                return;
+            }
+
+            list.innerHTML = userRelays.map(code => `
+                <div class="flex items-center gap-3 group">
+                    <button onclick="switchRelay('${code}')" class="flex-1 text-left p-6 rounded-[1.5rem] text-[11px] font-black tracking-[0.2em] uppercase transition-all shadow-sm ${code === activeRelayId ? 'active-relay-card' : 'bg-slate-50 text-slate-400'}">
+                        ${code}
+                    </button>
+                    <button onclick="handleDeleteRelay('${code}')" class="w-16 h-16 flex items-center justify-center rounded-[1.5rem] bg-rose-50 text-rose-400 active:bg-rose-500 active:text-white transition-colors border border-rose-100/50 shadow-sm">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        };
+
+        window.handleLogin = async () => {
+            const e = document.getElementById('login-email').value.trim();
+            const p = document.getElementById('login-password').value;
+            if (!e || !p) return showToast("Enter login details");
+            try { await signInWithEmailAndPassword(auth, e, p); } 
+            catch (err) { showToast("Invalid credentials"); }
+        };
+
+        window.handleSignup = async () => {
+            const f = document.getElementById('signup-first').value.trim();
+            const l = document.getElementById('signup-last').value.trim();
+            const e = document.getElementById('signup-email').value.trim();
+            const p = document.getElementById('signup-password').value;
+            if (!f || !l || !e || p.length < 6) return showToast("Check fields (Password 6+ chars)");
+            
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, e, p);
+                const profile = { firstName: f, lastName: l, email: e, photo: signupPhotoBase64 || '', createdAt: Date.now() };
+                await setDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), profile);
+                userData = profile;
+            } catch (err) { showToast(err.message.replace("Firebase:", "")); }
+        };
+
+        window.handleLogout = () => signOut(auth);
+
+        window.previewSignupPhoto = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    signupPhotoBase64 = e.target.result;
+                    const preview = document.getElementById('signup-photo-preview');
+                    preview.src = signupPhotoBase64;
+                    preview.classList.remove('hidden');
+                    document.getElementById('signup-photo-icon').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.handleCreateRelay = async () => {
+            const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relays', code), { creator: currentUser.uid, createdAt: Date.now() });
+                await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'relays', code), { joinedAt: Date.now() });
+                activeRelayId = code;
+                localStorage.setItem('relay_active_id', code);
+                showToast(`Relay ${code} created!`);
+            } catch (e) { showToast("Error creating relay"); }
+        };
+
+        window.handleJoinRelayFromSidebar = async () => {
+            const code = document.getElementById('sidebar-join-input').value.trim().toUpperCase();
+            if (!code) return showToast("Enter code");
+            
+            try {
+                const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relays', code));
+                if (!snap.exists()) return showToast("Relay not found");
+                
+                await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'relays', code), { joinedAt: Date.now() });
+                activeRelayId = code;
+                localStorage.setItem('relay_active_id', code);
+                document.getElementById('sidebar-join-input').value = '';
+                showToast("Joined Relay!");
+            } catch (e) { showToast("Error joining"); }
+        };
+
+        window.handleDeleteRelay = (code) => {
+            openConfirm(`Leave relay ${code}?`, async () => {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'relays', code));
+                    showToast("Left relay");
+                    if (activeRelayId === code) {
+                        activeRelayId = null;
+                        localStorage.removeItem('relay_active_id');
+                    }
+                } catch (e) { showToast("Error leaving relay"); }
+            });
+        };
+
+        window.switchRelay = (code) => {
+            activeRelayId = code;
+            localStorage.setItem('relay_active_id', code);
+            updateActiveRelayUI();
+            setupTeamListener();
+            renderSidebarRelayList();
+            toggleSidebar();
+        };
+
+        window.updateStatus = async (type) => {
+            if (!activeRelayId) return showToast("Join a relay first");
+            if (!selectedDay) return showToast("Select a date on the calendar");
+            
+            const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDay}`;
+            const currentMap = relayStatusesData[currentUser.uid] || {};
+            currentMap[dateKey] = type;
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relay_statuses', currentUser.uid), {
+                    relayId: activeRelayId,
+                    availability: currentMap,
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch (e) { showToast("Update failed"); }
+        };
+
+        window.renderCalendar = () => {
+            const grid = document.getElementById('calendar-grid');
+            const header = document.getElementById('calendar-header');
+            
+            header.innerHTML = ['S','M','T','W','T','F','S'].map(d => `
+                <div class="text-[10px] font-black text-center text-slate-200 uppercase tracking-tighter">${d}</div>
+            `).join('');
+
+            grid.innerHTML = '';
+            document.getElementById('current-date-header').innerText = `${now.toLocaleString('default', { month: 'long' })} ${currentYear}`;
+            
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateKey = `${currentYear}-${currentMonth + 1}-${i}`;
+                const statuses = Object.values(relayStatusesData).map(u => u[dateKey]).filter(Boolean);
+                
+                let bgColor = 'bg-slate-50 text-slate-400 border-transparent';
+                if (statuses.length > 0) {
+                    if (statuses.includes('shift')) bgColor = 'bg-rose-500 text-white border-rose-600 shadow-lg shadow-rose-100';
+                    else if (statuses.includes('unavail')) bgColor = 'bg-orange-500 text-white border-orange-600 shadow-lg shadow-orange-100';
+                    else bgColor = 'bg-emerald-500 text-white border-emerald-600 shadow-lg shadow-emerald-100';
+                }
+
+                const dayEl = document.createElement('div');
+                dayEl.className = `aspect-square rounded-2xl border flex items-center justify-center text-[12px] font-black cursor-pointer transition-all active:scale-90 ${bgColor} ${selectedDay === i ? 'selected-day' : ''}`;
+                dayEl.innerText = i;
+                dayEl.onclick = () => {
+                    selectedDay = i;
+                    document.getElementById('selected-day-label').innerText = `${now.toLocaleString('default', {month:'short'})} ${i}`;
+                    renderCalendar();
+                    renderAvailabilityList();
+                };
+                grid.appendChild(dayEl);
+            }
+        };
+
+        const renderAvailabilityList = () => {
+            const container = document.getElementById('availability-list');
+            if (!selectedDay || !activeRelayId) return;
+
+            const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDay}`;
+            const users = Object.keys(relayStatusesData);
+            
+            if (users.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">No team data for this date</div>`;
+                return;
+            }
+
+            container.innerHTML = users.map(uid => {
+                const profile = relayUsersData[uid] || { firstName: 'Team', lastName: 'Member' };
+                const status = relayStatusesData[uid][dateKey];
+                let statusBadge = `<span class="text-[8px] font-black px-3 py-1.5 bg-slate-100 text-slate-400 rounded-xl tracking-widest">OFF</span>`;
+                
+                if (status === 'free') statusBadge = `<span class="text-[8px] font-black px-3 py-1.5 bg-emerald-100 text-emerald-600 rounded-xl tracking-widest">FREE</span>`;
+                if (status === 'shift') statusBadge = `<span class="text-[8px] font-black px-3 py-1.5 bg-rose-100 text-rose-600 rounded-xl tracking-widest">SHIFT</span>`;
+                if (status === 'unavail') statusBadge = `<span class="text-[8px] font-black px-3 py-1.5 bg-orange-100 text-orange-600 rounded-xl tracking-widest">AWAY</span>`;
+
+                return `
+                    <div class="flex items-center justify-between p-4 bg-slate-50/50 rounded-3xl border border-slate-100/50">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-[1rem] bg-white border border-slate-100 overflow-hidden flex items-center justify-center text-indigo-300 shadow-sm">
+                                ${profile.photo ? `<img src="${profile.photo}" class="w-full h-full object-cover">` : `<i data-lucide="user" class="w-5 h-5"></i>`}
+                            </div>
+                            <span class="text-[12px] font-bold text-slate-700 tracking-tight">${profile.firstName} ${profile.lastName} ${uid === currentUser.uid ? '<span class="text-indigo-400">(Me)</span>' : ''}</span>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        };
+
+        const checkAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try { await signInWithCustomToken(auth, __initial_auth_token); } catch (e) { }
+            }
+        };
+        
+        checkAuth();
+        renderCalendar();
+    </script>
+</body>
+</html>
