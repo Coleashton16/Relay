@@ -322,12 +322,16 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCustomToken, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const relayConfig = {
-            apiKey: "AIzaSyD8APWhg6rpIAslOAAnjpZM5tDoUAgsKBY", authDomain: "relay-8ad82.firebaseapp.com",
-            projectId: "relay-8ad82", storageBucket: "relay-8ad82.firebasestorage.app",
-            messagingSenderId: "912829496349", appId: "1:912829496349:web:e9130d03f97d5e6ffa1af4"
+        // Your exact Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8APWhg6rpIAslOAAnjpZM5tDoUAgsKBY",
+            authDomain: "relay-8ad82.firebaseapp.com",
+            projectId: "relay-8ad82",
+            storageBucket: "relay-8ad82.firebasestorage.app",
+            messagingSenderId: "912829496349",
+            appId: "1:912829496349:web:e9130d03f97d5e6ffa1af4",
+            measurementId: "G-RWB69744VY"
         };
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : relayConfig;
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -417,17 +421,27 @@
             try {
                 if (user) {
                     currentUser = user;
-                    const profileSnap = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'));
-                    if (profileSnap.exists()) {
-                        userData = profileSnap.data();
-                        updateProfileUI();
-                        initUserRelaysListener();
-                        [authUI].forEach(el => el.classList.add('hidden'));
-                    } else {
-                        // User created but profile write failed or pending
-                        authUI.classList.remove('hidden');
-                        [setupUI, dashUI].forEach(el => el.classList.add('hidden'));
+                    
+                    // Wrap database call in a specific try/catch to prevent permission errors from freezing the login
+                    try {
+                        const profileSnap = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'));
+                        
+                        if (profileSnap.exists()) {
+                            userData = profileSnap.data();
+                        } else {
+                            userData = { firstName: 'Relay', lastName: 'User', email: user.email || '', photo: '', createdAt: Date.now() };
+                            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), userData);
+                        }
+                    } catch (fsError) {
+                        console.error("Firestore Permissions Error:", fsError);
+                        showToast("Warning: Database access denied. Check your Firestore Rules.", 4000);
+                        // Fallback so the app doesn't freeze on the login screen
+                        userData = { firstName: 'Relay', lastName: 'User', email: user.email || '', photo: '', createdAt: Date.now() };
                     }
+                    
+                    updateProfileUI();
+                    initUserRelaysListener();
+                    authUI.classList.add('hidden');
                 } else {
                     currentUser = null; userData = null;
                     clearAllListeners();
@@ -436,6 +450,7 @@
                 }
             } catch (e) {
                 console.error("Auth Flow Error:", e);
+                showToast("Authentication Error. Please try again.");
                 authUI.classList.remove('hidden');
             } finally {
                 loading.classList.add('hidden');
@@ -490,7 +505,13 @@
                     // Once we know user's relays, fetch public info for them
                     initPublicRelaysListener();
                 }
-            }, err => showToast("Error loading your relays"));
+            }, err => {
+                console.error(err);
+                showToast("Error loading your relays. Check Firestore Rules.");
+                // Ensure UI transitions to setup if rules block reading
+                document.getElementById('relay-setup-container').classList.remove('hidden');
+                document.getElementById('dashboard-container').classList.add('hidden');
+            });
         };
 
         const initPublicRelaysListener = () => {
@@ -627,10 +648,7 @@
 
         window.leaveActiveRelay = async () => {
             if(!currentUser || !activeRelayId) return;
-            const confirmLeave = confirm("Are you sure you want to leave this relay?");
-            if(!confirmLeave) return; // Native confirm as requested fallback avoidance, but rule says no confirm(). Replacing with implicit action or custom UI.
-            // Self-Correction: "Never use alert() or confirm()". I will just execute it.
-            
+            // Using implicit action instead of confirm()
             try {
                 // Remove from public members
                 const relayRef = doc(db, 'artifacts', appId, 'public', 'data', 'relays', activeRelayId);
@@ -695,8 +713,15 @@
             const e = document.getElementById('login-email').value.trim();
             const p = document.getElementById('login-password').value;
             if (!e || !p) return showToast("Enter credentials");
-            try { await signInWithEmailAndPassword(auth, e, p); } 
-            catch (err) { showToast("Login failed."); }
+            
+            document.getElementById('loading-screen').classList.remove('hidden');
+            try { 
+                await signInWithEmailAndPassword(auth, e, p); 
+                // Do not hide loading screen here; let onAuthStateChanged handle it for a smooth transition
+            } catch (err) { 
+                document.getElementById('loading-screen').classList.add('hidden');
+                showToast(err.message.split('/')[1]?.replace(').','') || "Login failed. Check details."); 
+            }
         };
 
         window.handleSignup = async () => {
@@ -705,12 +730,24 @@
             const e = document.getElementById('signup-email').value.trim();
             const p = document.getElementById('signup-password').value;
             if (!f || !l || !e || p.length < 6) return showToast("All fields required (Pass min 6 chars)");
+            
+            document.getElementById('loading-screen').classList.remove('hidden');
             try {
                 const cred = await createUserWithEmailAndPassword(auth, e, p);
                 const profileData = { firstName: f, lastName: l, email: e, photo: base64Photos.signup || '', createdAt: Date.now() };
-                await setDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), profileData);
+                
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), profileData);
+                } catch(fsError) {
+                    console.error("Firestore Write Error:", fsError);
+                    showToast("Account created, but database access denied. Check Firestore Rules.");
+                }
+                
                 userData = profileData;
-            } catch (err) { showToast(err.message.split('/')[1]?.replace(').','') || "Signup Error"); }
+            } catch (err) { 
+                document.getElementById('loading-screen').classList.add('hidden');
+                showToast(err.message.split('/')[1]?.replace(').','') || "Signup Error"); 
+            }
         };
 
         window.saveProfileSettings = async () => {
