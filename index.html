@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Relay - Professional Planning</title>
+    <title>Relay - Group Planning</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -319,7 +319,7 @@
         <section id="modal-settings" class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
             <header class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
                 <button onclick="closeModal('modal-settings')" class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Done</button>
-                <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Management</h3>
+                <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">SETTINGS</h3>
                 <div class="w-10"></div>
             </header>
 
@@ -386,7 +386,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc, query, where, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, onSnapshot, deleteDoc, updateDoc, addDoc, query, where, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD8APWhg6rpIAslOAAnjpZM5tDoUAgsKBY",
@@ -456,7 +456,6 @@
             }
         });
 
-        // NOTIFICATION LOGIC
         const createNotif = async (type, msg, relayId) => {
             if (!relayId) return;
             try {
@@ -482,7 +481,6 @@
                 return;
             }
 
-            // Update Numeric Badge
             badge.classList.add('active');
             const count = notifs.length;
             badge.innerText = count > 9 ? '9+' : count;
@@ -511,15 +509,40 @@
         };
 
         window.clearNotifs = async () => {
-            notifs = [];
-            renderNotifs();
+            if (!activeRid || notifs.length === 0) return;
+            
+            const list = document.getElementById('notif-list');
+            list.innerHTML = `<div class="flex flex-col items-center justify-center py-10"><div class="w-6 h-6 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div><p class="text-[8px] font-black uppercase tracking-widest text-slate-400">Purging Alerts...</p></div>`;
+
+            try {
+                const q = query(
+                    collection(db, 'artifacts', appId, 'public', 'data', 'relay_notifications'),
+                    where('relayId', '==', activeRid)
+                );
+                
+                const snapshot = await getDocs(q);
+                const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+                
+                await Promise.all(deletePromises);
+                
+                showToast("Inbox Cleared");
+                closeModal('modal-notifications');
+            } catch (e) { 
+                console.error("Clear failed:", e);
+                showToast("Cloud Sync Error");
+                renderNotifs();
+            }
         };
 
-        // ... existing sync/auth logic ...
         window.handleLogin = async () => {
             const e = document.getElementById('login-email').value;
             const p = document.getElementById('login-pass').value;
-            try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { showToast(err.message.split(':').pop()); }
+            if (!e || !p) return showToast("Enter credentials");
+            try { 
+                await signInWithEmailAndPassword(auth, e, p); 
+            } catch (err) { 
+                showToast(err.message.split(':').pop()); 
+            }
         };
 
         window.handleSignup = async () => {
