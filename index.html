@@ -29,13 +29,13 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Custom Toast */
-        #toast { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s; }
+        #toast { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s; z-index: 200; }
     </style>
 </head>
 <body class="bg-slate-50 flex justify-center items-center">
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed top-6 left-6 right-6 z-[200] bg-slate-900 text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-2xl opacity-0 pointer-events-none -translate-y-10">
+    <div id="toast" class="fixed top-6 left-6 right-6 bg-slate-900 text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-2xl opacity-0 pointer-events-none -translate-y-10">
         Notification Message
     </div>
 
@@ -52,7 +52,6 @@
             <p id="auth-subtitle" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mt-2">Connect & Coordinate</p>
         </div>
 
-        <!-- Login View -->
         <div id="login-view" class="space-y-4 fade-in">
             <div class="space-y-1">
                 <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Email</label>
@@ -68,7 +67,6 @@
             </div>
         </div>
 
-        <!-- Signup View -->
         <div id="signup-view" class="space-y-4 hidden pb-10 fade-in">
             <div class="flex flex-col items-center mb-6">
                 <label for="signup-photo" class="cursor-pointer">
@@ -103,7 +101,7 @@
         </div>
     </div>
 
-    <!-- Screen 2: Relay Choice (No Relay yet) -->
+    <!-- Screen 2: Relay Choice -->
     <div id="relay-setup-container" class="app-viewport w-full max-w-md bg-white shadow-2xl relative hidden px-8 flex flex-col justify-center fade-in">
         <div class="text-center mb-10">
             <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
@@ -118,13 +116,7 @@
                 <input type="text" id="relay-join-code" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-center text-xl font-mono font-black tracking-[0.4em] uppercase outline-none focus:border-indigo-300" placeholder="00000">
             </div>
             <button onclick="handleJoinRelayFromSetup()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Join Relay</button>
-            
-            <div class="flex items-center my-8">
-                <div class="flex-1 border-t border-slate-100"></div>
-                <span class="px-4 text-[9px] font-black text-slate-300 uppercase">OR</span>
-                <div class="flex-1 border-t border-slate-100"></div>
-            </div>
-            
+            <div class="flex items-center my-8"><div class="flex-1 border-t border-slate-100"></div><span class="px-4 text-[9px] font-black text-slate-300 uppercase">OR</span><div class="flex-1 border-t border-slate-100"></div></div>
             <button onclick="handleCreateRelay()" class="w-full border-2 border-slate-100 text-slate-600 py-4 rounded-2xl font-black uppercase text-xs tracking-widest active:bg-slate-50 transition-all">Create New Relay</button>
             <button onclick="handleLogout()" class="w-full text-[10px] font-black text-rose-500 uppercase py-8">Sign Out</button>
         </div>
@@ -132,48 +124,33 @@
 
     <!-- Screen 3: Dashboard -->
     <div id="dashboard-container" class="app-viewport w-full max-w-md bg-white shadow-2xl relative hidden">
-        
-        <!-- Sidebar Overlay -->
         <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 opacity-0 pointer-events-none transition-opacity duration-300"></div>
-
-        <!-- Sidebar / Drawer -->
         <div id="sidebar" class="fixed top-0 left-0 h-full w-[310px] bg-white z-50 -translate-x-full shadow-2xl flex flex-col p-6">
             <button onclick="toggleSidebar()" class="self-end p-2 text-slate-400 mb-2"><i data-lucide="x" class="w-6 h-6"></i></button>
-
-            <!-- User Info -->
             <div class="flex flex-col items-center mb-8 text-center px-4">
                 <div class="w-20 h-20 rounded-full bg-indigo-50 border-2 border-white shadow-sm overflow-hidden mb-4 relative">
                     <img id="sidebar-img-display" src="" class="hidden w-full h-full object-cover">
                     <i id="sidebar-icon-placeholder" data-lucide="user" class="w-8 h-8 text-indigo-200 m-6"></i>
                 </div>
-                <h3 id="display-name" class="font-black text-slate-800 uppercase text-sm tracking-tight">Alex Johnson</h3>
-                <p id="display-email" class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest truncate w-full">alex@relay.app</p>
+                <h3 id="display-name" class="font-black text-slate-800 uppercase text-sm tracking-tight">---</h3>
+                <p id="display-email" class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest truncate w-full">---</p>
             </div>
-
-            <!-- Relay Management -->
             <nav class="flex-1 space-y-6 overflow-y-auto no-scrollbar pr-2">
                 <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100">
                     <p class="text-[9px] font-black text-slate-400 uppercase mb-4 tracking-widest text-center border-b border-slate-200 pb-2">Active Relay</p>
-                    <div class="text-center mb-6">
-                        <p id="current-relay-display" class="text-2xl font-mono font-black text-indigo-600 uppercase tracking-[0.3em]">-----</p>
-                    </div>
-
+                    <div class="text-center mb-6"><p id="current-relay-display" class="text-2xl font-mono font-black text-indigo-600 uppercase tracking-[0.3em]">-----</p></div>
                     <div class="space-y-4">
                         <div>
                             <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Your Relays</p>
-                            <div id="my-relays-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
-                                <!-- Relay buttons go here -->
-                            </div>
+                            <div id="my-relays-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar"></div>
                         </div>
-
                         <div class="pt-2 flex flex-col gap-2">
-                            <input type="text" id="sidebar-join-input" class="w-full bg-white border border-slate-200 p-3 rounded-xl text-center text-xs font-bold uppercase tracking-widest outline-none focus:border-indigo-400" placeholder="JOIN CODE">
+                            <input type="text" id="sidebar-join-input" class="w-full bg-white border border-slate-200 p-3 rounded-xl text-center text-xs font-bold uppercase tracking-widest outline-none" placeholder="JOIN CODE">
                             <button onclick="handleJoinRelayFromSidebar()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">Join</button>
                             <button onclick="handleCreateRelay()" class="w-full bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest active:bg-slate-50 transition-all">Create New</button>
                         </div>
                     </div>
                 </div>
-
                 <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-rose-50 text-rose-600 transition-colors">
                     <i data-lucide="log-out" class="w-4 h-4"></i>
                     <span class="text-[10px] font-black uppercase tracking-widest">Sign Out</span>
@@ -181,9 +158,8 @@
             </nav>
         </div>
         
-        <!-- Header: Unified Profile + Dashboard -->
         <header class="px-5 pt-10 pb-4 flex items-center justify-between shrink-0 border-b border-slate-50">
-            <button onclick="toggleSidebar()" class="flex items-center gap-3 outline-none group active:scale-95 transition-transform">
+            <button onclick="toggleSidebar()" class="flex items-center gap-3 outline-none group">
                 <div id="header-profile-thumb" class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 border border-indigo-100 overflow-hidden shadow-sm">
                     <i data-lucide="user" class="w-5 h-5"></i>
                 </div>
@@ -195,25 +171,16 @@
             <h2 class="text-sm font-black tracking-[0.3em] text-slate-800 uppercase leading-none">DASHBOARD</h2>
         </header>
 
-        <!-- Main Dashboard Content -->
         <main class="flex-1 px-5 py-4 flex flex-col justify-around overflow-hidden">
-            
-            <!-- Calendar Card -->
             <section class="bg-slate-50 rounded-[2.5rem] p-6 border border-slate-200 shadow-sm flex flex-col min-h-[340px]">
                 <div class="flex items-center justify-between mb-5 px-1">
                     <div class="flex items-center gap-2.5 text-indigo-600">
                         <i data-lucide="calendar" class="w-4 h-4"></i>
                         <span id="current-month" class="font-black uppercase text-[11px] tracking-[0.2em]">MAY 2024</span>
                     </div>
-                    <div id="active-relay-badge" class="text-[8px] font-black bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-widest">
-                        NONE
-                    </div>
+                    <div id="active-relay-badge" class="text-[8px] font-black bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-widest">NONE</div>
                 </div>
-                
-                <!-- The Grid -->
                 <div class="grid grid-cols-7 gap-1.5" id="calendar-grid"></div>
-
-                <!-- Legend -->
                 <div class="mt-auto pt-4 border-t border-slate-200 grid grid-cols-3 gap-1 text-[7px] font-black uppercase tracking-wider text-slate-400">
                     <div class="flex items-center gap-1.5"><div class="w-3.5 h-3.5 rounded bg-emerald-500 flex items-center justify-center"><i data-lucide="check" class="w-2 h-2 text-white"></i></div><span>All Free</span></div>
                     <div class="flex items-center gap-1.5"><div class="w-3.5 h-3.5 rounded bg-red-500 flex items-center justify-center"><i data-lucide="clock" class="w-2 h-2 text-white"></i></div><span>Shift</span></div>
@@ -221,28 +188,13 @@
                 </div>
             </section>
 
-            <!-- Quick Actions -->
             <section class="w-full">
-                <div class="text-center mb-6">
-                    <p id="selected-date-label" class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.35em]">Select a day</p>
-                </div>
+                <div class="text-center mb-6"><p id="selected-date-label" class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.35em]">Select a day</p></div>
                 <div class="grid grid-cols-4 gap-4 px-1">
-                    <button onclick="updateStatus('shift')" class="flex flex-col items-center gap-2 group">
-                        <div class="w-full aspect-square bg-white border border-slate-200 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform group-active:bg-slate-50"><i data-lucide="clock" class="w-6 h-6 text-slate-600"></i></div>
-                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight">Shift</span>
-                    </button>
-                    <button onclick="updateStatus('free')" class="flex flex-col items-center gap-2 group">
-                        <div class="w-full aspect-square bg-white border border-emerald-500 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform group-active:bg-emerald-50"><i data-lucide="check-circle-2" class="w-6 h-6 text-emerald-500"></i></div>
-                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight">Free</span>
-                    </button>
-                    <button onclick="updateStatus('unavail')" class="flex flex-col items-center gap-2 group">
-                        <div class="w-full aspect-square bg-white border border-orange-500 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform group-active:bg-orange-50"><i data-lucide="x-circle" class="w-6 h-6 text-orange-500"></i></div>
-                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight leading-none">Unavail</span>
-                    </button>
-                    <button class="flex flex-col items-center gap-2 group">
-                        <div class="w-full aspect-square bg-indigo-600 rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-100 group-active:scale-90 transition-transform"><i data-lucide="send" class="w-5 h-5 text-white rotate-[-45deg] translate-x-0.5"></i></div>
-                        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-tighter">Plan</span>
-                    </button>
+                    <button onclick="updateStatus('shift')" class="flex flex-col items-center gap-2 group"><div class="w-full aspect-square bg-white border border-slate-200 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform"><i data-lucide="clock" class="w-6 h-6 text-slate-600"></i></div><span class="text-[9px] font-black text-slate-500 uppercase tracking-tight">Shift</span></button>
+                    <button onclick="updateStatus('free')" class="flex flex-col items-center gap-2 group"><div class="w-full aspect-square bg-white border border-emerald-500 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform"><i data-lucide="check-circle-2" class="w-6 h-6 text-emerald-500"></i></div><span class="text-[9px] font-black text-slate-500 uppercase tracking-tight">Free</span></button>
+                    <button onclick="updateStatus('unavail')" class="flex flex-col items-center gap-2 group"><div class="w-full aspect-square bg-white border border-orange-500 rounded-3xl flex items-center justify-center shadow-sm group-active:scale-90 transition-transform"><i data-lucide="x-circle" class="w-6 h-6 text-orange-500"></i></div><span class="text-[9px] font-black text-slate-500 uppercase tracking-tight leading-none">Unavail</span></button>
+                    <button class="flex flex-col items-center gap-2 group"><div class="w-full aspect-square bg-indigo-600 rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-100 group-active:scale-90 transition-transform"><i data-lucide="send" class="w-5 h-5 text-white rotate-[-45deg] translate-x-0.5"></i></div><span class="text-[9px] font-black text-indigo-600 uppercase tracking-tighter">Plan</span></button>
                 </div>
             </section>
         </main>
@@ -253,14 +205,23 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCustomToken, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Config from Environment
-        const firebaseConfig = JSON.parse(__firebase_config);
+        // Firebase Config with Fallback for Deployment
+        const relayConfig = {
+            apiKey: "AIzaSyD8APWhg6rpIAslOAAnjpZM5tDoUAgsKBY",
+            authDomain: "relay-8ad82.firebaseapp.com",
+            projectId: "relay-8ad82",
+            storageBucket: "relay-8ad82.firebasestorage.app",
+            messagingSenderId: "912829496349",
+            appId: "1:912829496349:web:e9130d03f97d5e6ffa1af4",
+            measurementId: "G-RWB69744VY"
+        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : relayConfig;
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'relay-prod-v1';
 
-        // App State
         let currentUser = null;
         let userData = null;
         let userRelays = [];
@@ -275,7 +236,6 @@
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth();
 
-        // --- UTILS ---
         window.showToast = (msg, duration = 3000) => {
             const toast = document.getElementById('toast');
             toast.innerText = msg;
@@ -296,59 +256,46 @@
         };
 
         window.toggleAuthMode = (mode) => {
-            const login = document.getElementById('login-view');
-            const signup = document.getElementById('signup-view');
-            const subtitle = document.getElementById('auth-subtitle');
-            if (mode === 'signup') {
-                login.classList.add('hidden');
-                signup.classList.remove('hidden');
-                subtitle.innerText = "Create Your Profile";
-            } else {
-                signup.classList.add('hidden');
-                login.classList.remove('hidden');
-                subtitle.innerText = "Connect & Coordinate";
-            }
+            document.getElementById('login-view').classList.toggle('hidden', mode === 'signup');
+            document.getElementById('signup-view').classList.toggle('hidden', mode === 'login');
+            document.getElementById('auth-subtitle').innerText = mode === 'signup' ? "Create Your Profile" : "Connect & Coordinate";
         };
 
-        // --- AUTH LOGIC (RULE 3) ---
         onAuthStateChanged(auth, async (user) => {
             const loading = document.getElementById('loading-screen');
             const authUI = document.getElementById('auth-container');
             const setupUI = document.getElementById('relay-setup-container');
             const dashUI = document.getElementById('dashboard-container');
 
-            [authUI, setupUI, dashUI].forEach(el => el.classList.add('hidden'));
-
-            if (user) {
-                currentUser = user;
-                try {
-                    // 1. Fetch Profile
+            try {
+                if (user) {
+                    currentUser = user;
                     const profileSnap = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'));
                     if (profileSnap.exists()) {
                         userData = profileSnap.data();
                         updateSidebarProfile();
-                        
-                        // 2. Fetch User Relays
                         initRelayListeners();
+                        [authUI, setupUI].forEach(el => el.classList.add('hidden'));
                     } else {
-                        // Profile missing? This shouldn't happen with the current flow, but handle gracefully
+                        // Signed in but no profile - show auth/signup
                         authUI.classList.remove('hidden');
+                        [setupUI, dashUI].forEach(el => el.classList.add('hidden'));
                     }
-                } catch (e) {
-                    console.error("Auth Init Error:", e);
+                } else {
                     authUI.classList.remove('hidden');
+                    [setupUI, dashUI].forEach(el => el.classList.add('hidden'));
                 }
-            } else {
+            } catch (e) {
+                console.error("Auth Listener Error:", e);
                 authUI.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+                lucide.createIcons();
             }
-            loading.classList.add('hidden');
-            lucide.createIcons();
         });
 
-        // --- RELAY LISTENERS ---
         const initRelayListeners = () => {
             if (unsubscribeRelays) unsubscribeRelays();
-            
             const relaysRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'relays');
             unsubscribeRelays = onSnapshot(relaysRef, (snapshot) => {
                 userRelays = [];
@@ -363,12 +310,10 @@
                 } else {
                     setupUI.classList.add('hidden');
                     dashUI.classList.remove('hidden');
-                    
                     if (!activeRelayId || !userRelays.includes(activeRelayId)) {
                         activeRelayId = userRelays[0];
                         localStorage.setItem('active_relay_id', activeRelayId);
                     }
-                    
                     renderRelayList();
                     updateHeaderAndBadge();
                     setupGroupListener();
@@ -378,7 +323,6 @@
 
         const setupGroupListener = () => {
             if (unsubscribeStatuses) unsubscribeStatuses();
-            
             const statusesRef = collection(db, 'artifacts', appId, 'public', 'data', 'relay_statuses');
             unsubscribeStatuses = onSnapshot(statusesRef, (snapshot) => {
                 groupData = {};
@@ -392,7 +336,6 @@
             });
         };
 
-        // --- UI UPDATES ---
         const updateSidebarProfile = () => {
             document.getElementById('display-name').innerText = `${userData.firstName} ${userData.lastName}`;
             document.getElementById('display-email').innerText = userData.email;
@@ -428,12 +371,11 @@
             toggleSidebar();
         };
 
-        // --- AUTH ACTIONS ---
         window.handleLogin = async () => {
-            const e = document.getElementById('login-email').value;
+            const e = document.getElementById('login-email').value.trim();
             const p = document.getElementById('login-password').value;
             if (!e || !p) return showToast("Enter credentials");
-            try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { showToast(err.message.replace("Firebase:", "")); }
+            try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { showToast("Login failed. Check your email/password."); }
         };
 
         window.handleSignup = async () => {
@@ -441,8 +383,7 @@
             const l = document.getElementById('signup-last').value.trim();
             const e = document.getElementById('signup-email').value.trim();
             const p = document.getElementById('signup-password').value;
-            if (!f || !l || !e || p.length < 6) return showToast("Check your details");
-            
+            if (!f || !l || !e || p.length < 6) return showToast("All fields required (Password min 6 chars)");
             try {
                 const cred = await createUserWithEmailAndPassword(auth, e, p);
                 const profileData = { firstName: f, lastName: l, email: e, photo: signupPhotoBase64 || '', createdAt: Date.now() };
@@ -459,20 +400,20 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     signupPhotoBase64 = e.target.result;
-                    document.getElementById('signup-photo-preview').src = signupPhotoBase64;
-                    document.getElementById('signup-photo-preview').classList.remove('hidden');
+                    const preview = document.getElementById('signup-photo-preview');
+                    preview.src = signupPhotoBase64;
+                    preview.classList.remove('hidden');
                     document.getElementById('signup-photo-icon').classList.add('hidden');
                 };
                 reader.readAsDataURL(file);
             }
         };
 
-        // --- RELAY ACTIONS ---
         const performJoin = async (code) => {
-            const codeClean = code.toUpperCase();
+            const codeClean = code.trim().toUpperCase();
+            if (!codeClean) return showToast("Enter a code");
             const relaySnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relays', codeClean));
-            if (!relaySnap.exists()) return showToast("Relay code invalid");
-            
+            if (!relaySnap.exists()) return showToast("Invalid Relay Code");
             await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'relays', codeClean), { joinedAt: Date.now() });
             activeRelayId = codeClean;
             localStorage.setItem('active_relay_id', activeRelayId);
@@ -490,26 +431,21 @@
             showToast(`Created Relay: ${code}`);
         };
 
-        // --- STATUS ACTIONS ---
         window.updateStatus = async (type) => {
             if (!selectedDay || !currentUser || !activeRelayId) return;
             const dateKey = `${currentYear}-${currentMonth + 1}-${selectedDay}`;
             const statusRef = doc(db, 'artifacts', appId, 'public', 'data', 'relay_statuses', currentUser.uid);
-            
             const currentMap = groupData[currentUser.uid] || {};
             currentMap[dateKey] = type;
             groupData[currentUser.uid] = currentMap;
             renderCalendar();
-
             await setDoc(statusRef, { relayId: activeRelayId, availability: currentMap, updatedAt: Date.now() }, { merge: true });
         };
 
-        // --- CALENDAR RENDER ---
         window.renderCalendar = () => {
             const grid = document.getElementById('calendar-grid');
             if (!grid) return;
             grid.innerHTML = '';
-            
             ['S','M','T','W','T','F','S'].forEach(d => {
                 const el = document.createElement('div');
                 el.className = 'text-[10px] font-black text-center text-slate-300 pb-2 uppercase tracking-tighter';
@@ -526,7 +462,6 @@
             for (let i = 1; i <= daysInMonth; i++) {
                 const dateKey = `${currentYear}-${currentMonth + 1}-${i}`;
                 const statuses = Object.values(groupData).map(u => u[dateKey]).filter(s => s);
-                
                 let state = 'none';
                 if (statuses.length > 0) {
                     if (statuses.includes('shift')) state = 'shift';
@@ -555,10 +490,9 @@
             lucide.createIcons();
         };
 
-        // Init App (Fallback)
         const checkAuth = async () => {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                try { await signInWithCustomToken(auth, __initial_auth_token); } catch (e) { /* onAuthStateChanged handles UI */ }
+                try { await signInWithCustomToken(auth, __initial_auth_token); } catch (e) { }
             }
         };
         checkAuth();
