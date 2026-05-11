@@ -349,19 +349,23 @@
 
     async function ensureProfile(user, seed = {}) {
       const ref = doc(db, COLLECTIONS.profiles, user.uid);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        const profile = {
-          firstName: seed.firstName || '',
-          lastName: seed.lastName || '',
-          email: user.email || '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        };
-        await setDoc(ref, profile);
-        state.profile = profile;
-      } else {
-        state.profile = snap.data();
+      const fallbackProfile = {
+        firstName: seed.firstName || state.profile?.firstName || '',
+        lastName: seed.lastName || state.profile?.lastName || '',
+        email: user.email || state.profile?.email || '',
+        updatedAt: serverTimestamp()
+      };
+      try {
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          await setDoc(ref, { ...fallbackProfile, createdAt: serverTimestamp() }, { merge: true });
+          state.profile = { ...fallbackProfile };
+        } else {
+          state.profile = snap.data();
+        }
+      } catch (error) {
+        await setDoc(ref, { ...fallbackProfile, createdAt: serverTimestamp() }, { merge: true });
+        state.profile = { ...fallbackProfile };
       }
     }
 
@@ -587,8 +591,15 @@
       const email = $('signup-email').value.trim();
       const password = $('signup-password').value;
       if (!firstName || !email || password.length < 6) return showToast('Complete all required fields');
+      state.profile = { firstName, lastName, email };
       const result = await createUserWithEmailAndPassword(auth, email, password);
-      await ensureProfile(result.user, { firstName, lastName });
+      await setDoc(doc(db, COLLECTIONS.profiles, result.user.uid), {
+        firstName,
+        lastName,
+        email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
       showToast('Account created');
     }
 
@@ -735,7 +746,10 @@
       await ensureProfile(user);
 
       unsubs.session.push(onSnapshot(doc(db, COLLECTIONS.profiles, user.uid), (snap) => {
-        state.profile = snap.exists() ? snap.data() : null;
+        if (snap.exists()) state.profile = snap.data();
+        renderProfileForm();
+      }, async () => {
+        try { await ensureProfile(user); } catch {}
         renderProfileForm();
       }));
     }
