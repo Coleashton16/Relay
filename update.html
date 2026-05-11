@@ -1,950 +1,1627 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Relay Rebuild</title>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Relay - Group Planning</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
-    :root {
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --surface-2: #f8fafc;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --primary: #4f46e5;
-      --primary-soft: #eef2ff;
-      --success: #059669;
-      --danger: #dc2626;
-      --warning: #d97706;
-      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    :root { --primary: #4F46E5; --bg: #F8FAFC; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F1F5F9;
+      overscroll-behavior-y: none;
+      -webkit-tap-highlight-color: transparent;
     }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; font-family: Inter, sans-serif; background: var(--bg); color: var(--text); }
-    body { min-height: 100vh; }
-    .app-shell { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--surface); box-shadow: var(--shadow); position: relative; overflow: hidden; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); }
-    .btn { border: 0; border-radius: 18px; padding: 14px 16px; font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; transition: .18s ease; }
-    .btn:active { transform: scale(.98); }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-secondary { background: #0f172a; color: white; }
-    .btn-soft { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
-    .input { width: 100%; border: 1px solid var(--border); background: var(--surface-2); border-radius: 18px; padding: 14px 16px; font-size: 14px; outline: none; }
-    .input:focus { border-color: var(--primary); background: white; }
-    .screen { display: none; min-height: 100vh; }
-    .screen.active { display: flex; flex-direction: column; }
-    .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
-    .modal { position: absolute; inset: 0; background: #f8fafc; z-index: 40; transform: translateY(100%); transition: transform .25s ease; display: flex; flex-direction: column; }
-    .modal.open { transform: translateY(0); }
-    .status-dot { width: 6px; height: 6px; border-radius: 999px; }
-    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-16px); opacity: 0; pointer-events: none; transition: .2s ease; z-index: 999; }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
-    .calendar-day { min-height: 56px; border: 1px solid var(--border); background: white; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
-    .calendar-day.selected { border-color: var(--primary); background: var(--primary-soft); }
-    .badge { border-radius: 999px; padding: 4px 8px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-    .hidden-safe { display: none !important; }
+
+    .app-container {
+      height: 100dvh;
+      width: 100vw;
+      max-width: 480px;
+      margin: 0 auto;
+      background: white;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(0,0,0,0.1);
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .premium-card {
+      background: white;
+      border: 1px solid #F1F5F9;
+      border-radius: 2rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    }
+
+    .calendar-day {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .selected-day {
+      border: 2px solid var(--primary) !important;
+      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    }
+
+    .modal-slide-up {
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+    }
+    .modal-slide-up.active { transform: translateY(0); }
+
+    .tab-bar {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: saturate(180%) blur(20px);
+      border-top: 0.5px solid rgba(0,0,0,0.08);
+    }
+
+    #toast {
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 9999;
+    }
+
+    @keyframes pulse-indigo {
+      0%   { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+      70%  { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+    }
+    .pulse-plan { animation: pulse-indigo 2s infinite; }
+
+    .status-dot { width: 4px; height: 4px; border-radius: 50%; }
+    .bg-free { background-color: #10B981; }
+    .bg-shift { background-color: #EF4444; }
+    .bg-busy { background-color: #F59E0B; }
+
+    .tab-btn { position: relative; transition: color 0.2s; }
+    .tab-btn.active { color: var(--primary); }
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 10px;
+    }
+
+    .notif-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      min-width: 20px;
+      height: 20px;
+      background: #EF4444;
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+      border-radius: 50px;
+      border: 2px solid white;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+      pointer-events: none;
+      animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .notif-badge.active { display: flex; }
+
+    @keyframes badge-pop {
+      from { transform: scale(0); }
+      to   { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
-  <div id="toast" class="toast card px-5 py-3 text-xs font-bold"></div>
 
-  <div class="app-shell">
-    <section id="loading-screen" class="screen active items-center justify-center gap-4 px-8 text-center">
-      <div class="w-12 h-12 rounded-full border-4 border-slate-200 border-t-indigo-600 animate-spin"></div>
-      <div>
-        <div class="text-xs font-extrabold tracking-[0.28em] uppercase text-slate-400">Relay</div>
-        <div class="text-sm font-semibold text-slate-500 mt-2">Connecting to Firebase…</div>
-      </div>
-    </section>
+<!-- Toast UI -->
+<div id="toast"
+     class="fixed top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl opacity-0 pointer-events-none -translate-y-5 flex items-center gap-3 w-[85%] max-w-[400px] text-center justify-center">
+  <i data-lucide="bell" class="w-4 h-4 text-indigo-400"></i>
+  <span id="toast-msg">Notification</span>
+</div>
 
-    <section id="auth-screen" class="screen px-7 pt-16 pb-8">
-      <div class="text-center mb-10">
-        <div class="w-20 h-20 mx-auto rounded-[28px] bg-indigo-50 text-indigo-600 flex items-center justify-center mb-5">
-          <i data-lucide="calendar-heart" class="w-10 h-10"></i>
-        </div>
-        <h1 class="text-4xl font-extrabold tracking-tight">Relay</h1>
-        <p class="text-sm text-slate-500 mt-2">Group availability that stays in sync.</p>
-      </div>
+<!-- App Shell -->
+<div class="app-container">
 
-      <div id="login-pane" class="space-y-4">
-        <input id="login-email" class="input" type="email" placeholder="Email" />
-        <input id="login-password" class="input" type="password" placeholder="Password" />
-        <button id="login-btn" class="btn btn-primary w-full">Sign In</button>
-        <button id="show-signup-btn" class="btn btn-soft w-full">Create Account</button>
-      </div>
-
-      <div id="signup-pane" class="space-y-4 hidden-safe">
-        <div class="grid grid-cols-2 gap-3">
-          <input id="signup-first" class="input" type="text" placeholder="First name" />
-          <input id="signup-last" class="input" type="text" placeholder="Last name" />
-        </div>
-        <input id="signup-email" class="input" type="email" placeholder="Email" />
-        <input id="signup-password" class="input" type="password" placeholder="Password" />
-        <button id="signup-btn" class="btn btn-primary w-full">Create Account</button>
-        <button id="show-login-btn" class="btn btn-soft w-full">Back To Sign In</button>
-      </div>
-    </section>
-
-    <section id="setup-screen" class="screen px-6 pt-12 pb-8 gap-6">
-      <div>
-        <h2 class="text-3xl font-extrabold tracking-tight">Your relays</h2>
-        <p class="text-sm text-slate-500 mt-1">Join one or create one. Data model is intentionally simple.</p>
-      </div>
-
-      <div class="card p-5 space-y-3">
-        <div class="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Create relay</div>
-        <input id="create-relay-name" class="input" type="text" placeholder="Relay name" />
-        <button id="create-relay-btn" class="btn btn-primary w-full">Create Relay</button>
-      </div>
-
-      <div class="card p-5 space-y-3">
-        <div class="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Join relay</div>
-        <input id="join-relay-code" class="input uppercase" type="text" placeholder="Enter code" />
-        <button id="join-relay-btn" class="btn btn-secondary w-full">Join Relay</button>
-      </div>
-
-      <div class="card p-5">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">My relays</div>
-          <button id="logout-from-setup-btn" class="text-xs font-bold text-slate-500">Sign out</button>
-        </div>
-        <div id="relay-list" class="space-y-3 text-sm text-slate-500">No relays yet.</div>
-      </div>
-    </section>
-
-    <section id="app-screen" class="screen">
-      <header class="px-6 pt-10 pb-4 border-b border-slate-100 bg-white sticky top-0 z-10">
-        <div class="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <div id="active-relay-name" class="text-lg font-extrabold">Relay</div>
-            <div class="text-xs text-slate-500 mt-1">Code: <span id="active-relay-code" class="font-bold text-indigo-600"></span></div>
-          </div>
-          <button id="open-settings-btn" class="w-11 h-11 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-            <i data-lucide="settings-2" class="w-5 h-5 text-slate-500"></i>
-          </button>
-        </div>
-        <div class="flex gap-6 text-xs font-extrabold uppercase tracking-[0.15em]">
-          <button id="tab-calendar" class="tab active pb-3">Calendar</button>
-          <button id="tab-agenda" class="tab pb-3 text-slate-400">Agenda</button>
-        </div>
-      </header>
-
-      <main class="flex-1 overflow-y-auto px-6 pt-6 pb-40 space-y-6">
-        <div id="calendar-view" class="space-y-6">
-          <section class="card p-5">
-            <div class="flex items-center justify-between mb-5">
-              <div id="month-label" class="text-sm font-extrabold uppercase tracking-[0.12em]"></div>
-              <div class="flex gap-2">
-                <button id="prev-month-btn" class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-                <button id="next-month-btn" class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-              </div>
-            </div>
-            <div class="grid grid-cols-7 gap-2 mb-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 text-center">
-              <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-            </div>
-            <div id="calendar-grid" class="calendar-grid"></div>
-            <button id="best-dates-btn" class="btn btn-soft w-full mt-5">Find Best Dates</button>
-          </section>
-
-          <section class="card p-5 min-h-[260px]">
-            <div id="selected-day-empty" class="h-full min-h-[200px] flex flex-col items-center justify-center text-center text-slate-400 gap-3">
-              <i data-lucide="calendar-days" class="w-8 h-8"></i>
-              <div class="text-xs font-extrabold uppercase tracking-[0.2em]">Select a day</div>
-            </div>
-
-            <div id="selected-day-content" class="hidden-safe">
-              <div class="flex items-center justify-between gap-3 mb-5">
-                <div>
-                  <div id="selected-day-label" class="text-sm font-extrabold"></div>
-                  <div class="text-xs text-slate-500 mt-1">Set your status, then review the team.</div>
-                </div>
-                <button id="confirm-day-btn" class="btn btn-primary">Confirm Plan</button>
-              </div>
-              <div class="grid grid-cols-2 gap-3 mb-4">
-                <button class="btn btn-soft status-btn" data-status="free">Free</button>
-                <button class="btn btn-soft status-btn" data-status="busy">Busy</button>
-                <button class="btn btn-soft status-btn" data-status="shift">Shift</button>
-                <button class="btn btn-soft" id="clear-status-btn">Clear</button>
-              </div>
-              <div id="day-members-list" class="space-y-3"></div>
-            </div>
-          </section>
-        </div>
-
-        <div id="agenda-view" class="hidden-safe space-y-4">
-          <section class="card p-5">
-            <div class="text-sm font-extrabold mb-4">Confirmed plans</div>
-            <div id="plans-list" class="space-y-3 text-sm text-slate-500">No confirmed plans yet.</div>
-          </section>
-        </div>
-      </main>
-    </section>
-
-    <section id="settings-modal" class="modal">
-      <header class="px-6 pt-10 pb-4 bg-white border-b border-slate-200 flex items-center justify-between">
-        <button id="close-settings-btn" class="text-xs font-extrabold uppercase tracking-[0.14em] text-indigo-600">Done</button>
-        <div class="text-sm font-extrabold">Settings</div>
-        <div class="w-10"></div>
-      </header>
-      <div class="p-6 overflow-y-auto space-y-5">
-        <section class="card p-5 space-y-3">
-          <div class="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Profile</div>
-          <input id="profile-first" class="input" type="text" placeholder="First name" />
-          <input id="profile-last" class="input" type="text" placeholder="Last name" />
-          <button id="save-profile-btn" class="btn btn-primary w-full">Save Profile</button>
-        </section>
-
-        <section class="card p-5 space-y-3">
-          <div class="flex items-center justify-between">
-            <div class="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Members</div>
-            <button id="leave-relay-btn" class="text-xs font-bold text-rose-600">Leave relay</button>
-          </div>
-          <div id="members-list" class="space-y-3"></div>
-        </section>
-
-        <section class="card p-5 space-y-3">
-          <div class="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">All relays</div>
-          <div id="switch-relay-list" class="space-y-3"></div>
-        </section>
-
-        <button id="logout-btn" class="btn btn-soft w-full">Sign Out</button>
-      </div>
-    </section>
-
-    <section id="best-dates-modal" class="modal">
-      <header class="px-6 pt-10 pb-4 bg-white border-b border-slate-200 flex items-center justify-between">
-        <button id="close-best-dates-btn" class="text-xs font-extrabold uppercase tracking-[0.14em] text-indigo-600">Done</button>
-        <div class="text-sm font-extrabold">Best Dates</div>
-        <div class="w-10"></div>
-      </header>
-      <div id="best-dates-list" class="p-6 overflow-y-auto space-y-3"></div>
-    </section>
+  <!-- LOADING SCREEN -->
+  <div id="screen-loading"
+       class="absolute inset-0 bg-white z-[500] flex flex-col items-center justify-center transition-opacity duration-500">
+    <div class="w-12 h-12 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
+    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Relay Cloud Sync</p>
   </div>
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-    import {
-      getFirestore,
-      doc,
-      setDoc,
-      getDoc,
-      updateDoc,
-      deleteDoc,
-      collection,
-      query,
-      where,
-      onSnapshot,
-      serverTimestamp,
-      writeBatch,
-      runTransaction,
-      orderBy,
-      getDocs
-    } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+  <!-- AUTH SCREEN -->
+  <section id="screen-auth" class="absolute inset-0 z-[400] bg-white flex flex-col px-8 pt-20 hidden">
+    <div class="text-center mb-12">
+      <div
+        class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-100/50">
+        <i data-lucide="zap" class="w-10 h-10"></i>
+      </div>
+      <h1 class="text-4xl font-black tracking-tighter text-slate-900 italic">Relay.</h1>
+      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-3">Identity Verified Planning</p>
+    </div>
 
-    const firebaseConfig = {
-      apiKey: 'AIzaSyAQoD4TAfSy9SGEiNvAKbCg1EodK9KcmmY',
-      authDomain: 'relay2-767f0.firebaseapp.com',
-      projectId: 'relay2-767f0',
-      storageBucket: 'relay2-767f0.firebasestorage.app',
-      messagingSenderId: '417225251420',
-      appId: '1:417225251420:web:7de8444785f0553c982499',
-      measurementId: 'G-XYV31DZ076'
-    };
+    <div id="auth-login" class="space-y-4">
+      <input type="email" id="login-email"
+             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white"
+             placeholder="Email Address">
+      <input type="password" id="login-pass"
+             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white"
+             placeholder="Password">
+      <button onclick="handleLogin()"
+              class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">
+        Sign In
+      </button>
+      <button onclick="toggleAuth('signup')"
+              class="w-full text-[10px] font-black text-indigo-600 uppercase tracking-widest pt-4">
+        Create New Account
+      </button>
+    </div>
 
-    const COLLECTIONS = {
-      profiles: 'profiles',
-      relays: 'relays'
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let bootResolved = false;
-
-    const state = {
-      user: null,
-      profile: null,
-      userRelays: [],
-      activeRelayId: null,
-      activeRelay: null,
-      members: [],
-      profiles: {},
-      statusesByDate: {},
-      plans: [],
-      selectedDate: null,
-      viewDate: new Date()
-    };
-
-    const unsubs = {
-      session: [],
-      relay: []
-    };
-
-    const $ = (id) => document.getElementById(id);
-
-    function showToast(message) {
-      const el = $('toast');
-      el.textContent = message;
-      el.classList.add('show');
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => el.classList.remove('show'), 2500);
-    }
-
-    function clearListeners(bucket) {
-      unsubs[bucket].forEach((u) => { try { u(); } catch {} });
-      unsubs[bucket] = [];
-    }
-
-    function setScreen(screenId) {
-      ['loading-screen', 'auth-screen', 'setup-screen', 'app-screen'].forEach((id) => {
-        $(id).classList.remove('active');
-      });
-      $(screenId).classList.add('active');
-      lucide.createIcons();
-    }
-
-    function finishBoot(screenId) {
-      bootResolved = true;
-      setScreen(screenId);
-    }
-
-    function openModal(id) { $(id).classList.add('open'); }
-    function closeModal(id) { $(id).classList.remove('open'); }
-
-    function formatDateKey(date) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    }
-
-    function parseDateKey(dateKey) {
-      const [y, m, d] = dateKey.split('-').map(Number);
-      return new Date(y, m - 1, d);
-    }
-
-    function createRelayCode() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let out = '';
-      for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
-      return out;
-    }
-
-    async function generateUniqueRelayCode() {
-      for (let i = 0; i < 10; i++) {
-        const code = createRelayCode();
-        const snap = await getDoc(doc(db, COLLECTIONS.relays, code));
-        if (!snap.exists()) return code;
-      }
-      throw new Error('Could not generate unique relay code');
-    }
-
-    async function ensureProfile(user, seed = {}) {
-      const ref = doc(db, COLLECTIONS.profiles, user.uid);
-      const fallbackProfile = {
-        firstName: seed.firstName || state.profile?.firstName || '',
-        lastName: seed.lastName || state.profile?.lastName || '',
-        email: user.email || state.profile?.email || '',
-        updatedAt: serverTimestamp()
-      };
-      try {
-        const snap = await getDoc(ref);
-        if (!snap.exists()) {
-          await setDoc(ref, { ...fallbackProfile, createdAt: serverTimestamp() }, { merge: true });
-          state.profile = { ...fallbackProfile };
-        } else {
-          state.profile = snap.data();
-        }
-      } catch (error) {
-        await setDoc(ref, { ...fallbackProfile, createdAt: serverTimestamp() }, { merge: true });
-        state.profile = { ...fallbackProfile };
-      }
-    }
-
-    function renderRelayLists() {
-      const data = state.userRelays;
-      $('relay-list').innerHTML = data.length ? data.map((relay) => `
-        <button class="w-full card p-4 text-left" data-switch-relay="${relay.id}">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-sm font-extrabold">${escapeHtml(relay.name || 'Untitled Relay')}</div>
-              <div class="text-xs text-slate-500 mt-1">${relay.id} · ${relay.memberCount || 0} members</div>
-            </div>
-            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+    <div id="auth-signup" class="space-y-4 hidden overflow-y-auto no-scrollbar pb-10">
+      <div class="flex flex-col items-center mb-4">
+        <label for="signup-avatar" class="cursor-pointer group relative">
+          <div
+            class="w-24 h-24 rounded-full bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+            <img id="signup-avatar-preview" src="" class="hidden w-full h-full object-cover">
+            <i data-lucide="camera" id="signup-avatar-icon" class="w-8 h-8 text-slate-300"></i>
           </div>
+        </label>
+        <input type="file" id="signup-avatar" class="hidden" accept="image/*"
+               onchange="previewAvatar(event, 'signup-avatar-preview')">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <input type="text" id="signup-f"
+               class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+               placeholder="First Name">
+        <input type="text" id="signup-l"
+               class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+               placeholder="Last Name">
+      </div>
+      <input type="email" id="signup-e"
+             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+             placeholder="Email">
+      <input type="password" id="signup-p"
+             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+             placeholder="Password (6+ Characters)">
+      <button onclick="handleSignup()"
+              class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">
+        Create Account
+      </button>
+      <button onclick="toggleAuth('login')"
+              class="w-full text-[10px] font-black text-slate-400 uppercase py-2">
+        Back to Login
+      </button>
+    </div>
+  </section>
+
+  <!-- SETUP SCREEN -->
+  <section id="screen-setup" class="absolute inset-0 z-[300] bg-white flex flex-col px-8 pt-20 hidden">
+    <div class="text-center mb-10">
+      <h2 class="text-3xl font-black text-slate-900 tracking-tight italic uppercase">Relays</h2>
+      <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">No active team detected</p>
+    </div>
+    <div id="setup-relay-list" class="space-y-3 mb-8 max-h-[300px] overflow-y-auto no-scrollbar"></div>
+    <div class="mt-auto pb-10 space-y-4">
+      <div class="premium-card p-6 border-indigo-100 bg-indigo-50/20">
+        <label class="text-[10px] font-black text-indigo-600 uppercase mb-3 block text-center tracking-widest">
+          Join Team
+        </label>
+        <input type="text" id="join-code"
+               class="w-full bg-white border border-indigo-100 p-4 rounded-2xl text-center text-xl font-mono font-black uppercase tracking-widest outline-none"
+               placeholder="CODE">
+        <button onclick="handleJoin()"
+                class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest mt-3 active:scale-95">
+          Link Relay
         </button>
-      `).join('') : '<div class="text-sm text-slate-500">No relays yet.</div>';
-
-      $('switch-relay-list').innerHTML = data.length ? data.map((relay) => `
-        <button class="w-full card p-4 text-left" data-switch-relay="${relay.id}">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-sm font-extrabold">${escapeHtml(relay.name || 'Untitled Relay')}</div>
-              <div class="text-xs text-slate-500 mt-1">${relay.id}</div>
-            </div>
-            ${state.activeRelayId === relay.id ? '<span class="badge bg-indigo-50 text-indigo-600">Active</span>' : ''}
-          </div>
+      </div>
+      <div class="premium-card p-6">
+        <label class="text-[10px] font-black text-slate-400 uppercase mb-3 block text-center tracking-widest">
+          Create Relay
+        </label>
+        <input type="text" id="new-name"
+               class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-center text-sm font-bold"
+               placeholder="Relay Name">
+        <button onclick="handleCreate()"
+                class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest mt-3 shadow-lg active:scale-95">
+          Launch Relay
         </button>
-      `).join('') : '<div class="text-sm text-slate-500">No relays available.</div>';
+      </div>
+    </div>
+  </section>
 
-      document.querySelectorAll('[data-switch-relay]').forEach((btn) => {
-        btn.onclick = () => switchRelay(btn.dataset.switchRelay);
-      });
-      lucide.createIcons();
-    }
-
-    function renderHeader() {
-      $('active-relay-name').textContent = state.activeRelay?.name || 'Relay';
-      $('active-relay-code').textContent = state.activeRelayId || '';
-    }
-
-    function renderProfileForm() {
-      $('profile-first').value = state.profile?.firstName || '';
-      $('profile-last').value = state.profile?.lastName || '';
-    }
-
-    function renderMembers() {
-      const html = state.members.map((member) => {
-        const profile = state.profiles[member.uid] || {};
-        const isOwner = state.activeRelay?.ownerUid === member.uid;
-        const isSelf = state.user?.uid === member.uid;
-        const canRemove = state.activeRelay?.ownerUid === state.user?.uid && !isSelf;
-        return `
-          <div class="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div>
-              <div class="text-sm font-bold">${escapeHtml(fullName(profile, member.uid))}${isSelf ? ' (You)' : ''}</div>
-              <div class="text-xs text-slate-500 mt-1">${isOwner ? 'Owner' : 'Member'}</div>
-            </div>
-            ${canRemove ? `<button class="text-xs font-bold text-rose-600" data-remove-member="${member.uid}">Remove</button>` : ''}
+  <!-- DASHBOARD SCREEN -->
+  <section id="screen-dash" class="absolute inset-0 flex flex-col hidden">
+    <!-- Header -->
+    <header class="bg-white px-6 pt-12 pb-5 flex flex-col border-b border-slate-50 shrink-0">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-4">
+          <button onclick="openModal('modal-settings')"
+                  class="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 shadow-sm">
+            <img id="dash-avatar" src="" class="hidden w-full h-full object-cover">
+            <i id="dash-avatar-icon" data-lucide="user" class="w-5 h-5 text-slate-400"></i>
+          </button>
+          <div>
+            <h2 id="dash-relay-name"
+                class="text-sm font-black text-slate-900 uppercase tracking-tight leading-none mb-1">---</h2>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              Code: <span id="dash-relay-code" class="text-indigo-600 font-mono">XXXXX</span>
+            </p>
           </div>
-        `;
-      }).join('');
-      $('members-list').innerHTML = html || '<div class="text-sm text-slate-500">No members found.</div>';
-      document.querySelectorAll('[data-remove-member]').forEach((btn) => {
-        btn.onclick = () => removeMember(btn.dataset.removeMember);
-      });
-    }
-
-    function renderCalendar() {
-      $('month-label').textContent = state.viewDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
-      const grid = $('calendar-grid');
-      grid.innerHTML = '';
-      const year = state.viewDate.getFullYear();
-      const month = state.viewDate.getMonth();
-      const firstWeekday = new Date(year, month, 1).getDay();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      for (let i = 0; i < firstWeekday; i++) {
-        const spacer = document.createElement('div');
-        grid.appendChild(spacer);
-      }
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const key = formatDateKey(date);
-        const stats = state.statusesByDate[key] || {};
-        const btn = document.createElement('button');
-        btn.className = `calendar-day ${state.selectedDate === key ? 'selected' : ''}`;
-        const counts = summarizeStatuses(stats);
-        btn.innerHTML = `
-          <div class="text-xs font-extrabold">${day}</div>
-          <div class="flex items-center gap-1 justify-center min-h-[8px]">
-            ${counts.free ? '<span class="status-dot" style="background:#059669"></span>' : ''}
-            ${counts.busy ? '<span class="status-dot" style="background:#d97706"></span>' : ''}
-            ${counts.shift ? '<span class="status-dot" style="background:#dc2626"></span>' : ''}
-          </div>
-        `;
-        btn.onclick = () => {
-          state.selectedDate = key;
-          renderCalendar();
-          renderSelectedDay();
-        };
-        grid.appendChild(btn);
-      }
-    }
-
-    function renderSelectedDay() {
-      const hasDate = Boolean(state.selectedDate);
-      $('selected-day-empty').classList.toggle('hidden-safe', hasDate);
-      $('selected-day-content').classList.toggle('hidden-safe', !hasDate);
-      if (!hasDate) return;
-
-      const date = parseDateKey(state.selectedDate);
-      $('selected-day-label').textContent = date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
-      const stats = state.statusesByDate[state.selectedDate] || {};
-      const myStatus = stats[state.user.uid] || null;
-      document.querySelectorAll('.status-btn').forEach((btn) => {
-        const active = btn.dataset.status === myStatus;
-        btn.classList.toggle('btn-primary', active);
-        btn.classList.toggle('btn-soft', !active);
-      });
-
-      $('day-members-list').innerHTML = state.members.map((member) => {
-        const profile = state.profiles[member.uid] || {};
-        const status = stats[member.uid] || 'unset';
-        const statusMeta = {
-          free: ['Free', 'bg-emerald-50 text-emerald-700'],
-          busy: ['Busy', 'bg-amber-50 text-amber-700'],
-          shift: ['Shift', 'bg-rose-50 text-rose-700'],
-          unset: ['No response', 'bg-slate-100 text-slate-500']
-        }[status];
-        return `
-          <div class="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div>
-              <div class="text-sm font-bold">${escapeHtml(fullName(profile, member.uid))}</div>
-              <div class="text-xs text-slate-500 mt-1">${member.uid === state.user.uid ? 'You' : 'Member'}</div>
-            </div>
-            <span class="badge ${statusMeta[1]}">${statusMeta[0]}</span>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderPlans() {
-      $('plans-list').innerHTML = state.plans.length ? state.plans.map((plan) => `
-        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50">
-          <div class="text-sm font-extrabold">${parseDateKey(plan.dateKey).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</div>
-          <div class="text-xs text-slate-500 mt-1">Confirmed by ${escapeHtml(fullName(state.profiles[plan.confirmedBy] || {}, plan.confirmedBy))}</div>
         </div>
-      `).join('') : 'No confirmed plans yet.';
-    }
+        <div class="flex items-center gap-2">
+          <button onclick="openModal('modal-notifications')"
+                  class="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 transition-colors active:bg-slate-100">
+            <i data-lucide="bell" class="w-4 h-4"></i>
+            <div id="notif-badge" class="notif-badge">0</div>
+          </button>
+          <button onclick="setScreen('screen-setup')"
+                  class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+            <i data-lucide="grid" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
 
-    function renderBestDates() {
-      const rows = computeBestDates();
-      $('best-dates-list').innerHTML = rows.length ? rows.map((row) => `
-        <button class="w-full card p-4 text-left" data-pick-date="${row.dateKey}">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-sm font-extrabold">${parseDateKey(row.dateKey).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</div>
-              <div class="text-xs text-slate-500 mt-1">${row.free} free · ${row.shift} shift · ${row.busy} busy · ${row.unset} no response</div>
-            </div>
-            ${row.free === state.members.length ? '<span class="badge bg-emerald-50 text-emerald-700">Best</span>' : '<i data-lucide="arrow-right" class="w-4 h-4 text-slate-400"></i>'}
-          </div>
+      <div class="flex gap-8 px-2 border-t border-slate-50 pt-4">
+        <button onclick="switchDashTab('cal')" id="tab-cal"
+                class="tab-btn active text-[10px] font-black uppercase tracking-[0.2em]">
+          Calendar
         </button>
-      `).join('') : '<div class="text-sm text-slate-500">No status data yet.</div>';
-      document.querySelectorAll('[data-pick-date]').forEach((btn) => {
-        btn.onclick = () => {
-          state.selectedDate = btn.dataset.pickDate;
-          state.viewDate = parseDateKey(btn.dataset.pickDate);
-          closeModal('best-dates-modal');
-          renderCalendar();
-          renderSelectedDay();
-        };
-      });
-      lucide.createIcons();
-    }
+        <button onclick="switchDashTab('agenda')" id="tab-agenda"
+                class="tab-btn text-[10px] font-black uppercase tracking-[0.2em]">
+          Agenda
+        </button>
+      </div>
+    </header>
 
-    function computeBestDates() {
-      const out = [];
-      const today = new Date();
-      for (let i = 0; i < 60; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const key = formatDateKey(d);
-        const stats = summarizeStatuses(state.statusesByDate[key] || {});
-        if (stats.free || stats.busy || stats.shift || stats.unset) {
-          out.push({ dateKey: key, ...stats });
+    <main class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-40">
+      <!-- CALENDAR VIEW SECTION -->
+      <div id="view-calendar" class="space-y-6">
+        <section class="premium-card p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 id="cal-month" class="text-sm font-black text-slate-900 uppercase tracking-widest italic">
+              Month
+            </h3>
+            <div class="flex gap-2">
+              <button onclick="modMonth(-1)"
+                      class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <button onclick="modMonth(1)"
+                      class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-7 gap-1.5 mb-2 text-center text-[8px] font-black text-slate-300 uppercase">
+            <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+          </div>
+          <div id="cal-grid" class="grid grid-cols-7 gap-y-3 gap-x-1.5"></div>
+        </section>
+
+        <section class="premium-card p-6 min-h-[300px] flex flex-col">
+          <div id="day-empty"
+               class="flex-1 flex flex-col items-center justify-center text-slate-300 py-10">
+            <i data-lucide="calendar" class="w-8 h-8 mb-3 opacity-20"></i>
+            <p class="text-[10px] font-black uppercase tracking-[0.3em]">Pick a Date</p>
+          </div>
+
+          <div id="day-content" class="hidden flex flex-col h-full">
+            <div class="text-center mb-6">
+              <p id="detail-date"
+                 class="text-xs font-black text-indigo-600 uppercase tracking-[0.4em]">
+                Date Label
+              </p>
+            </div>
+
+            <div id="plan-section" class="mb-8">
+              <button id="btn-propose" onclick="handlePropose()"
+                      class="w-full bg-indigo-600 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all">
+                <i data-lucide="send" class="w-4 h-4 -rotate-45"></i> Propose Plan
+              </button>
+
+              <div id="plan-ui"
+                   class="hidden p-5 rounded-[2rem] bg-slate-50 border border-slate-100 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h4 id="plan-status"
+                        class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full w-max mb-1 text-white">
+                      Pending
+                    </h4>
+                    <p id="plan-meta"
+                       class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      ---
+                    </p>
+                  </div>
+                  <div id="plan-count" class="text-2xl font-black text-slate-900 italic">
+                    0/0
+                  </div>
+                </div>
+
+                <div id="plan-confirmed-details"
+                     class="hidden space-y-3 pt-2 border-t border-slate-200">
+                  <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                      <label
+                        class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                        Starts
+                      </label>
+                      <input type="time" id="plan-time-start"
+                             class="w-full bg-white border border-slate-100 p-2 rounded-xl text-xs font-bold"
+                             onchange="updatePlanDetails()">
+                    </div>
+                    <div class="space-y-1">
+                      <label
+                        class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                        Ends
+                      </label>
+                      <input type="time" id="plan-time-end"
+                             class="w-full bg-white border border-slate-100 p-2 rounded-xl text-xs font-bold"
+                             onchange="updatePlanDetails()">
+                    </div>
+                  </div>
+                  <div class="space-y-1">
+                    <label
+                      class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Venue Name
+                    </label>
+                    <input type="text" id="plan-location"
+                           class="w-full bg-white border border-slate-100 p-2.5 rounded-xl text-xs font-bold"
+                           placeholder="e.g. Skyline Bar"
+                           onchange="updatePlanDetails()">
+                  </div>
+                  <div class="space-y-1">
+                    <label
+                      class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Full Address
+                    </label>
+                    <textarea id="plan-address"
+                              class="w-full bg-white border border-slate-100 p-2.5 rounded-xl text-xs font-bold min-h-[60px]"
+                              placeholder="123 Main St, City..."
+                              onchange="updatePlanDetails()"></textarea>
+                  </div>
+                </div>
+
+                <div id="plan-actions" class="grid grid-cols-2 gap-2">
+                  <button id="btn-accept" onclick="handlePlanResp('accept')"
+                          class="bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-transform">
+                    Accept
+                  </button>
+                  <button id="btn-reject" onclick="handlePlanResp('reject')"
+                          class="bg-white text-rose-500 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-rose-100 active:scale-95 transition-transform">
+                    Reject
+                  </button>
+                </div>
+                <div id="plan-mgmt"
+                     class="pt-2 border-t border-slate-200 flex flex-col gap-2">
+                  <button id="btn-withdraw" onclick="handlePlanReset()"
+                          class="hidden w-full bg-slate-200 text-slate-600 py-2 rounded-xl font-black uppercase text-[8px] tracking-widest active:scale-95 transition-transform">
+                    Withdraw My Response
+                  </button>
+                  <button id="btn-delete-plan" onclick="handleDeletePlan()"
+                          class="hidden w-full bg-rose-50 text-rose-500 py-2 rounded-xl font-black uppercase text-[8px] tracking-widest active:scale-95 transition-transform">
+                    Terminate Plan (Organizer)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex-1">
+              <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 border-b border-slate-50 pb-2">
+                Teammate Availability
+              </h4>
+              <div id="day-members" class="space-y-2"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- AGENDA VIEW SECTION -->
+      <div id="view-agenda" class="hidden space-y-4">
+        <div id="agenda-empty"
+             class="flex flex-col items-center justify-center py-20 text-slate-300">
+          <i data-lucide="layout-list" class="w-10 h-10 mb-4 opacity-10"></i>
+          <p class="text-[10px] font-black uppercase tracking-[0.3em]">No Upcoming Trips</p>
+        </div>
+        <div id="agenda-list" class="space-y-4"></div>
+      </div>
+    </main>
+
+    <!-- Bottom Availability Bar -->
+    <div id="footer-availability"
+         class="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto p-6 pb-10 pointer-events-none">
+      <div
+        class="tab-bar rounded-[2.5rem] p-2 flex justify-between items-center shadow-2xl pointer-events-auto border border-white">
+        <button onclick="setStatus('free')"
+                class="flex-1 py-4 flex flex-col items-center gap-1 group">
+          <div
+            class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white/40 active:scale-90 transition-transform shadow-lg shadow-emerald-200"></div>
+          <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+            Free
+          </span>
+        </button>
+        <div class="w-px h-8 bg-slate-200"></div>
+        <button onclick="setStatus('shift')"
+                class="flex-1 py-4 flex flex-col items-center gap-1 group">
+          <div
+            class="w-6 h-6 rounded-full bg-red-500 border-2 border-white/40 active:scale-90 transition-transform shadow-lg shadow-red-200"></div>
+          <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+            Shift
+          </span>
+        </button>
+        <div class="w-px h-8 bg-slate-200"></div>
+        <button onclick="setStatus('unavail')"
+                class="flex-1 py-4 flex flex-col items-center gap-1 group">
+          <div
+            class="w-6 h-6 rounded-full bg-amber-500 border-2 border-white/40 active:scale-90 transition-transform shadow-lg shadow-amber-200"></div>
+          <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+            Busy
+          </span>
+        </button>
+        <div class="w-px h-8 bg-slate-200"></div>
+        <button onclick="setStatus(null)"
+                class="flex-1 py-4 flex flex-col items-center gap-1 group">
+          <div class="w-6 h-6 rounded-full bg-slate-100 border-2 border-white active:scale-90 transition-transform"></div>
+          <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+            Reset
+          </span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOTIFICATIONS MODAL -->
+  <section id="modal-notifications"
+           class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
+    <header
+      class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+      <button onclick="closeModal('modal-notifications')"
+              class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+        Close
+      </button>
+      <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">
+        Notifications
+      </h3>
+      <button onclick="clearNotifs()"
+              class="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+        Clear
+      </button>
+    </header>
+    <div id="notif-list"
+         class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-3 pb-20">
+      <!-- Notifications populated here -->
+    </div>
+  </section>
+
+  <!-- SETTINGS MODAL -->
+  <section id="modal-settings"
+           class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
+    <header
+      class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+      <button onclick="closeModal('modal-settings')"
+              class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+        Done
+      </button>
+      <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">
+        SETTINGS
+      </h3>
+      <div class="w-10"></div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-20">
+      <div class="premium-card p-6">
+        <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
+          Identity Sync
+        </h4>
+        <div class="flex items-center gap-4 mb-6">
+          <label for="edit-avatar" class="cursor-pointer relative">
+            <div
+              class="w-20 h-20 rounded-[2rem] bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
+              <img id="set-avatar" src="" class="hidden w-full h-full object-cover">
+              <i data-lucide="camera" id="set-avatar-icon"
+                 class="w-6 h-6 text-slate-300"></i>
+            </div>
+            <input type="file" id="edit-avatar" class="hidden" accept="image/*"
+                   onchange="previewAvatar(event, 'set-avatar')">
+          </label>
+          <div class="flex-1 space-y-2">
+            <input type="text" id="set-fname"
+                   class="w-full bg-slate-100 border-none p-3 rounded-xl text-sm font-bold"
+                   placeholder="First Name">
+            <input type="text" id="set-lname"
+                   class="w-full bg-slate-100 border-none p-3 rounded-xl text-sm font-bold"
+                   placeholder="Last Name">
+          </div>
+        </div>
+        <button onclick="saveProfile()"
+                class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">
+          Update Cloud Profile
+        </button>
+      </div>
+
+      <div class="premium-card p-6">
+        <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
+          Relay Controls
+        </h4>
+        <div class="bg-slate-900 rounded-3xl p-5 text-center mb-6 shadow-xl">
+          <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">
+            Invite Code
+          </p>
+          <p id="set-code-display"
+             class="text-4xl font-mono font-black text-white tracking-widest">
+            XXXXX
+          </p>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label
+              class="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-2">
+              Team Alias
+            </label>
+            <div class="flex gap-2">
+              <input type="text" id="set-relay-name"
+                     class="flex-1 bg-slate-100 p-4 rounded-2xl text-sm font-bold border-none">
+              <button onclick="renameRelay()"
+                      class="bg-indigo-600 text-white px-6 rounded-2xl font-black uppercase text-[10px] tracking-widest">
+                Save
+              </button>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-50">
+            <p
+              class="text-[8px] font-black text-slate-400 uppercase mb-3 text-center tracking-widest">
+              Relay Roster
+            </p>
+            <div id="set-members" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="premium-card p-2 space-y-1">
+        <button onclick="handlePassReset()"
+                class="w-full flex items-center justify-between p-5 text-slate-600 active:bg-slate-50 rounded-2xl transition-colors">
+          <span class="text-[10px] font-black uppercase tracking-widest">
+            Reset Password
+          </span>
+          <i data-lucide="key" class="w-4 h-4 opacity-30"></i>
+        </button>
+        <button onclick="handleLeave()"
+                class="w-full flex items-center justify-between p-5 text-rose-500 active:bg-rose-50 rounded-2xl transition-colors">
+          <span class="text-[10px] font-black uppercase tracking-widest">
+            Leave Active Relay
+          </span>
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+        <button id="btn-delete" onclick="handleDelete()"
+                class="w-full flex items-center justify-between p-5 text-rose-600 active:bg-rose-50 rounded-2xl transition-colors hidden">
+          <span class="text-[10px] font-black uppercase tracking-widest">
+            Delete Relay
+          </span>
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <button onclick="handleLogout()"
+              class="w-full py-10 text-slate-300 font-black uppercase text-[10px] tracking-[0.5em] active:text-rose-500">
+        End Session & Logout
+      </button>
+    </div>
+  </section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  collection,
+  onSnapshot,
+  deleteDoc,
+  updateDoc,
+  addDoc,
+  query,
+  limit,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// Your updated Firebase project
+const firebaseConfig = {
+  apiKey: "AIzaSyAQoD4TAfSy9SGEiNvAKbCg1EodK9KcmmY",
+  authDomain: "relay2-767f0.firebaseapp.com",
+  projectId: "relay2-767f0",
+  storageBucket: "relay2-767f0.firebasestorage.app",
+  messagingSenderId: "417225251420",
+  appId: "1:417225251420:web:7de8444785f0553c982499",
+  measurementId: "G-XYV31DZ076"
+};
+
+const appId = "relay-professional-v2";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ---------- STATE ----------
+let currentU = null;
+let activeRid = localStorage.getItem("RELAY_RID") || null;
+let selDate = null;
+let viewDate = new Date();
+let dashTab = "cal";
+
+let profiles = {};
+let joinedRids = [];
+let curRelay = null;
+let members = [];
+let memberMeta = {};
+let statuses = {};
+let plans = {};
+let notifs = [];
+let unsubscribers = {};
+
+// ---------- HELPERS ----------
+const toKey = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+const fromKey = (key) => new Date(`${key}T00:00:00`);
+
+const showToast = (msg) => {
+  const t = document.getElementById("toast");
+  document.getElementById("toast-msg").innerText = msg;
+  t.classList.remove("opacity-0", "pointer-events-none", "-translate-y-5");
+  t.classList.add("opacity-100", "translate-y-0");
+  setTimeout(() => {
+    t.classList.add("opacity-0", "pointer-events-none", "-translate-y-5");
+    t.classList.remove("opacity-100", "translate-y-0");
+  }, 3000);
+};
+window.showToast = showToast;
+
+const setScreen = (id) => {
+  ["screen-auth", "screen-setup", "screen-dash"].forEach((s) =>
+    document.getElementById(s).classList.add("hidden")
+  );
+  document.getElementById(id).classList.remove("hidden");
+  document
+    .getElementById("screen-loading")
+    .classList.add("opacity-0", "pointer-events-none");
+  lucide.createIcons();
+};
+window.setScreen = setScreen;
+
+const switchDashTab = (t) => {
+  dashTab = t;
+  document
+    .getElementById("view-calendar")
+    .classList.toggle("hidden", t !== "cal");
+  document
+    .getElementById("view-agenda")
+    .classList.toggle("hidden", t !== "agenda");
+  document
+    .getElementById("footer-availability")
+    .classList.toggle("hidden", t !== "cal");
+  document.getElementById("tab-cal").classList.toggle("active", t === "cal");
+  document.getElementById("tab-agenda").classList.toggle("active", t === "agenda");
+  if (t === "agenda") renderAgenda();
+};
+window.switchDashTab = switchDashTab;
+
+// ---------- AUTH ----------
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentU = user;
+    initGlobalSync();
+  } else {
+    currentU = null;
+    stopSync();
+    setScreen("screen-auth");
+  }
+});
+
+window.handleLogin = async () => {
+  const e = document.getElementById("login-email").value.trim();
+  const p = document.getElementById("login-pass").value;
+  if (!e || !p) return showToast("Enter credentials");
+  try {
+    await signInWithEmailAndPassword(auth, e, p);
+  } catch (err) {
+    showToast(err.message.split(":").pop());
+  }
+};
+
+window.handleSignup = async () => {
+  const f = document.getElementById("signup-f").value.trim();
+  const l = document.getElementById("signup-l").value.trim();
+  const e = document.getElementById("signup-e").value.trim();
+  const p = document.getElementById("signup-p").value;
+  const avatar = document.getElementById("signup-avatar-preview").src;
+  if (!f || !e || p.length < 6) return showToast("Invalid Entry");
+  try {
+    const res = await createUserWithEmailAndPassword(auth, e, p);
+    const data = {
+      firstName: f,
+      lastName: l,
+      photo: avatar?.startsWith("data:") ? avatar : "",
+      email: e
+    };
+    await setDoc(doc(db, "profiles", res.user.uid), data);
+  } catch (err) {
+    showToast(err.message.split(":").pop());
+  }
+};
+
+window.handleLogout = () => signOut(auth);
+window.handlePassReset = () =>
+  sendPasswordResetEmail(auth, currentU.email).then(() =>
+    showToast("Security Link Sent")
+  );
+
+// ---------- GLOBAL SYNC ----------
+const initGlobalSync = () => {
+  unsubscribers.profiles = onSnapshot(collection(db, "profiles"), (s) => {
+    s.forEach((d) => {
+      profiles[d.id] = d.data();
+    });
+    updateProfileUI();
+    renderMembers();
+    renderDay();
+  });
+
+  unsubscribers.relays = onSnapshot(
+    collection(db, "users", currentU.uid, "relays"),
+    (s) => {
+      joinedRids = [];
+      s.forEach((d) => joinedRids.push(d.id));
+      if (joinedRids.length === 0) {
+        activeRid = null;
+        localStorage.removeItem("RELAY_RID");
+        renderRelayList();
+        setScreen("screen-setup");
+      } else {
+        if (!activeRid || !joinedRids.includes(activeRid)) {
+          activeRid = joinedRids[0];
+          localStorage.setItem("RELAY_RID", activeRid);
         }
+        syncRelay();
+        renderRelayList();
+        setScreen("screen-dash");
       }
-      return out.sort((a, b) => {
-        const scoreA = a.free * 3 - a.busy * 2 - a.shift;
-        const scoreB = b.free * 3 - b.busy * 2 - b.shift;
-        return scoreB - scoreA || a.unset - b.unset;
-      }).slice(0, 10);
     }
+  );
+};
 
-    function summarizeStatuses(dayObj) {
-      const counts = { free: 0, busy: 0, shift: 0, unset: 0 };
-      for (const member of state.members) {
-        const status = dayObj[member.uid];
-        if (status === 'free') counts.free++;
-        else if (status === 'busy') counts.busy++;
-        else if (status === 'shift') counts.shift++;
-        else counts.unset++;
-      }
-      return counts;
+const stopSync = () => {
+  Object.values(unsubscribers).forEach((u) => u && u());
+  unsubscribers = {};
+};
+
+// ---------- PER-RELAY SYNC ----------
+const syncRelay = () => {
+  if (!activeRid) return;
+  ["meta", "members", "statuses", "plans", "notifs"].forEach((key) => {
+    if (unsubscribers[key]) unsubscribers[key]();
+  });
+
+  unsubscribers.meta = onSnapshot(doc(db, "relays", activeRid), (d) => {
+    if (d.exists()) {
+      curRelay = d.data();
+      document.getElementById("dash-relay-name").innerText = curRelay.name;
+      document.getElementById("dash-relay-code").innerText = activeRid;
+      document.getElementById("set-code-display").innerText = activeRid;
+      document.getElementById("set-relay-name").value = curRelay.name;
+      document
+        .getElementById("btn-delete")
+        .classList.toggle("hidden", curRelay.creator !== currentU.uid);
     }
+  });
 
-    function fullName(profile, fallback) {
-      const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
-      return name || profile.email || fallback || 'User';
-    }
-
-    function escapeHtml(value = '') {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    async function signUp() {
-      const firstName = $('signup-first').value.trim();
-      const lastName = $('signup-last').value.trim();
-      const email = $('signup-email').value.trim();
-      const password = $('signup-password').value;
-      if (!firstName || !email || password.length < 6) return showToast('Complete all required fields');
-      state.profile = { firstName, lastName, email };
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, COLLECTIONS.profiles, result.user.uid), {
-        firstName,
-        lastName,
-        email,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      showToast('Account created');
-    }
-
-    async function signIn() {
-      const email = $('login-email').value.trim();
-      const password = $('login-password').value;
-      if (!email || !password) return showToast('Enter your email and password');
-      await signInWithEmailAndPassword(auth, email, password);
-    }
-
-    async function saveProfile() {
-      if (!state.user) return;
-      const data = {
-        firstName: $('profile-first').value.trim(),
-        lastName: $('profile-last').value.trim(),
-        email: state.user.email || '',
-        updatedAt: serverTimestamp()
-      };
-      await setDoc(doc(db, COLLECTIONS.profiles, state.user.uid), data, { merge: true });
-      showToast('Profile saved');
-    }
-
-    async function createRelay() {
-      if (!state.user) return;
-      const name = $('create-relay-name').value.trim() || 'New Relay';
-      const relayId = await generateUniqueRelayCode();
-      const relayRef = doc(db, COLLECTIONS.relays, relayId);
-      await runTransaction(db, async (tx) => {
-        tx.set(relayRef, {
-          name,
-          ownerUid: state.user.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          memberCount: 1
-        });
-        tx.set(doc(db, COLLECTIONS.relays, relayId, 'members', state.user.uid), {
-          uid: state.user.uid,
-          role: 'owner',
-          joinedAt: serverTimestamp()
-        });
+  unsubscribers.members = onSnapshot(
+    collection(db, "relays", activeRid, "members"),
+    (s) => {
+      members = [];
+      memberMeta = {};
+      s.forEach((d) => {
+        members.push(d.id);
+        memberMeta[d.id] = d.data();
       });
-      state.activeRelayId = relayId;
-      showToast('Relay created');
+      renderMembers();
+      renderCal();
+      renderDay();
+      if (dashTab === "agenda") renderAgenda();
     }
+  );
 
-    async function joinRelay() {
-      if (!state.user) return;
-      const relayId = $('join-relay-code').value.trim().toUpperCase();
-      if (!relayId) return showToast('Enter a relay code');
-      const relayRef = doc(db, COLLECTIONS.relays, relayId);
-      await runTransaction(db, async (tx) => {
-        const relaySnap = await tx.get(relayRef);
-        if (!relaySnap.exists()) throw new Error('Relay not found');
-        const memberRef = doc(db, COLLECTIONS.relays, relayId, 'members', state.user.uid);
-        const memberSnap = await tx.get(memberRef);
-        if (!memberSnap.exists()) {
-          tx.set(memberRef, { uid: state.user.uid, role: 'member', joinedAt: serverTimestamp() });
-          tx.update(relayRef, {
-            memberCount: (relaySnap.data().memberCount || 0) + 1,
-            updatedAt: serverTimestamp()
-          });
+  unsubscribers.statuses = onSnapshot(
+    collection(db, "relays", activeRid, "statuses"),
+    (s) => {
+      statuses = {};
+      s.forEach((d) => {
+        const dat = d.data();
+        if (!statuses[dat.dateKey]) statuses[dat.dateKey] = {};
+        statuses[dat.dateKey][dat.userId] = dat.status;
+      });
+      renderCal();
+      renderDay();
+    }
+  );
+
+  unsubscribers.plans = onSnapshot(
+    collection(db, "relays", activeRid, "plans"),
+    (s) => {
+      plans = {};
+      s.forEach((d) => {
+        const dat = d.data();
+        plans[dat.dateKey] = { id: d.id, ...dat };
+      });
+      renderCal();
+      renderDay();
+      if (dashTab === "agenda") renderAgenda();
+    }
+  );
+
+  unsubscribers.notifs = onSnapshot(
+    query(
+      collection(db, "relays", activeRid, "notifications"),
+      limit(50)
+    ),
+    (s) => {
+      notifs = [];
+      s.forEach((d) => {
+        notifs.push({ id: d.id, ...d.data() });
+      });
+      notifs.sort((a, b) => b.createdAt - a.createdAt);
+      renderNotifs();
+    }
+  );
+};
+
+// ---------- NOTIFICATIONS ----------
+const createNotif = async (type, msg, relayId) => {
+  if (!relayId) return;
+  try {
+    await addDoc(collection(db, "relays", relayId, "notifications"), {
+      type,
+      message: msg,
+      userId: currentU.uid,
+      createdAt: Date.now()
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const renderNotifs = () => {
+  const list = document.getElementById("notif-list");
+  const badge = document.getElementById("notif-badge");
+
+  if (!notifs.length) {
+    list.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-10 opacity-20">
+        <i data-lucide="bell-off" class="w-10 h-10 mb-4"></i>
+        <p class="text-[10px] font-black uppercase">No Alerts</p>
+      </div>`;
+    badge.classList.remove("active");
+    badge.innerText = "0";
+    lucide.createIcons();
+    return;
+  }
+  badge.classList.add("active");
+  const count = notifs.length;
+  badge.innerText = count > 9 ? "9+" : String(count);
+
+  list.innerHTML = notifs
+    .map((n) => {
+      const p = profiles[n.userId] || { firstName: "Team" };
+      const time = new Date(n.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+      let icon = "info";
+      let color = "text-indigo-600 bg-indigo-50";
+      if (n.type === "finalize") {
+        icon = "star";
+        color = "text-emerald-600 bg-emerald-50";
+      }
+      if (n.type === "veto") {
+        icon = "alert-circle";
+        color = "text-rose-600 bg-rose-50";
+      }
+      return `
+        <div class="premium-card p-4 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center ${color}">
+            <i data-lucide="${icon}" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-[10px] font-bold text-slate-800 leading-tight">${n.message}</p>
+            <p class="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">${time}</p>
+          </div>
+        </div>`;
+    })
+    .join("");
+  lucide.createIcons();
+};
+window.clearNotifs = async () => {
+  if (!activeRid || !notifs.length) return;
+  const list = document.getElementById("notif-list");
+  list.innerHTML = `
+    <div class="flex flex-col items-center justify-center py-10">
+      <div class="w-6 h-6 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+      <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">
+        Purging Alerts...
+      </p>
+    </div>`;
+  try {
+    const snap = await getDocs(collection(db, "relays", activeRid, "notifications"));
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+    showToast("Inbox Cleared");
+    closeModal("modal-notifications");
+  } catch (e) {
+    console.error("Clear failed:", e);
+    showToast("Cloud Sync Error");
+    renderNotifs();
+  }
+};
+
+// ---------- RELAY CREATE / JOIN ----------
+window.handleCreate = async () => {
+  const n = document.getElementById("new-name").value.trim() || "New Relay";
+  const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+  try {
+    await setDoc(doc(db, "relays", code), {
+      creator: currentU.uid,
+      name: n,
+      createdAt: Date.now()
+    });
+    await setDoc(doc(db, "relays", code, "members", currentU.uid), {
+      role: "owner",
+      joinedAt: Date.now()
+    });
+    await setDoc(doc(db, "users", currentU.uid, "relays", code), {
+      joinedAt: Date.now()
+    });
+    activeRid = code;
+    localStorage.setItem("RELAY_RID", code);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+window.handleJoin = async () => {
+  const code = document.getElementById("join-code").value.trim().toUpperCase();
+  if (!code) return;
+  try {
+    const snap = await getDoc(doc(db, "relays", code));
+    if (!snap.exists()) return showToast("Invalid Code");
+    await setDoc(doc(db, "relays", code, "members", currentU.uid), {
+      role: "member",
+      joinedAt: Date.now()
+    });
+    await setDoc(doc(db, "users", currentU.uid, "relays", code), {
+      joinedAt: Date.now()
+    });
+    activeRid = code;
+    localStorage.setItem("RELAY_RID", code);
+    const me = profiles[currentU.uid]?.firstName || "Someone";
+    createNotif("info", `${me} joined the team!`, code);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+// ---------- PROFILE / MEMBERS ----------
+const updateProfileUI = () => {
+  const me = profiles[currentU?.uid];
+  if (!me) return;
+  if (me.photo) {
+    document.getElementById("dash-avatar").src = me.photo;
+    document.getElementById("dash-avatar").classList.remove("hidden");
+    document.getElementById("dash-avatar-icon").classList.add("hidden");
+    document.getElementById("set-avatar").src = me.photo;
+    document.getElementById("set-avatar").classList.remove("hidden");
+    document.getElementById("set-avatar-icon").classList.add("hidden");
+  }
+  document.getElementById("set-fname").value = me.firstName || "";
+  document.getElementById("set-lname").value = me.lastName || "";
+};
+window.saveProfile = async () => {
+  const sAvatar = document.getElementById("set-avatar");
+  const data = {
+    firstName: document.getElementById("set-fname").value.trim(),
+    lastName: document.getElementById("set-lname").value.trim(),
+    photo:
+      sAvatar.src && sAvatar.src.startsWith("data:")
+        ? sAvatar.src
+        : profiles[currentU.uid]?.photo || ""
+  };
+  try {
+    await setDoc(doc(db, "profiles", currentU.uid), data, { merge: true });
+    showToast("Identity Synced");
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+window.previewAvatar = (e, t) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = (ev) => {
+    const i = document.getElementById(t);
+    i.src = ev.target.result;
+    i.classList.remove("hidden");
+    if (t === "signup-avatar-preview")
+      document.getElementById("signup-avatar-icon").classList.add("hidden");
+    else document.getElementById("set-avatar-icon").classList.add("hidden");
+  };
+  r.readAsDataURL(f);
+};
+
+window.renderRelayList = () => {
+  const list = document.getElementById("setup-relay-list");
+  list.innerHTML = joinedRids
+    .map(
+      (c) => `
+        <button onclick="switchRelay('${c}')"
+          class="w-full bg-white border border-slate-100 p-5 rounded-3xl text-left flex justify-between items-center active:scale-95 transition-transform">
+          <span class="text-[11px] font-black text-slate-800 uppercase tracking-widest italic">
+            RELAY ${c}
+          </span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+        </button>`
+    )
+    .join("");
+  lucide.createIcons();
+};
+window.switchRelay = (c) => {
+  activeRid = c;
+  localStorage.setItem("RELAY_RID", c);
+  syncRelay();
+  setScreen("screen-dash");
+};
+
+window.renderMembers = () => {
+  const list = document.getElementById("set-members");
+  if (!list || !activeRid) return;
+  list.innerHTML = "";
+  const isAdm = curRelay?.creator === currentU?.uid;
+  members.forEach((uid) => {
+    const p = profiles[uid] || { firstName: "User" };
+    const isMe = uid === currentU.uid;
+    list.innerHTML += `
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-white overflow-hidden border">
+            ${
+              p.photo
+                ? `<img src="${p.photo}" class="w-full h-full object-cover">`
+                : `<i data-lucide="user" class="w-3 h-3 text-slate-300 m-2.5"></i>`
+            }
+          </div>
+          <span class="text-[10px] font-black text-slate-600 uppercase">${p.firstName}</span>
+        </div>
+        ${
+          isAdm && !isMe
+            ? `<button onclick="kick('${uid}')" class="text-rose-500 p-2">
+                 <i data-lucide="user-minus" class="w-4 h-4"></i>
+               </button>`
+            : ""
         }
-      });
-      state.activeRelayId = relayId;
-      showToast('Joined relay');
-    }
+      </div>`;
+  });
+  lucide.createIcons();
+};
+window.kick = async (uid) => {
+  if (!confirm("Kick member?")) return;
+  try {
+    await deleteDoc(doc(db, "relays", activeRid, "members", uid));
+    await deleteDoc(doc(db, "users", uid, "relays", activeRid));
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    async function leaveRelay() {
-      if (!state.user || !state.activeRelayId || !state.activeRelay) return;
-      if (state.activeRelay.ownerUid === state.user.uid) return showToast('Owner cannot leave without deleting or transferring relay');
-      const relayRef = doc(db, COLLECTIONS.relays, state.activeRelayId);
-      const memberRef = doc(db, COLLECTIONS.relays, state.activeRelayId, 'members', state.user.uid);
-      await runTransaction(db, async (tx) => {
-        const relaySnap = await tx.get(relayRef);
-        if (!relaySnap.exists()) throw new Error('Relay not found');
-        tx.delete(memberRef);
-        tx.update(relayRef, {
-          memberCount: Math.max((relaySnap.data().memberCount || 1) - 1, 0),
-          updatedAt: serverTimestamp()
-        });
-      });
-      state.activeRelayId = null;
-      closeModal('settings-modal');
-      showToast('You left the relay');
-    }
+window.renameRelay = async () => {
+  const n = document.getElementById("set-relay-name").value.trim();
+  if (!n || !activeRid) return;
+  try {
+    await updateDoc(doc(db, "relays", activeRid), { name: n });
+    showToast("Alias Updated");
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    async function removeMember(uid) {
-      if (!state.user || !state.activeRelayId || !state.activeRelay) return;
-      if (state.activeRelay.ownerUid !== state.user.uid) return showToast('Only the owner can remove members');
-      const relayRef = doc(db, COLLECTIONS.relays, state.activeRelayId);
-      const memberRef = doc(db, COLLECTIONS.relays, state.activeRelayId, 'members', uid);
-      await runTransaction(db, async (tx) => {
-        const relaySnap = await tx.get(relayRef);
-        if (!relaySnap.exists()) throw new Error('Relay not found');
-        tx.delete(memberRef);
-        tx.update(relayRef, {
-          memberCount: Math.max((relaySnap.data().memberCount || 1) - 1, 0),
-          updatedAt: serverTimestamp()
-        });
-      });
-      showToast('Member removed');
-    }
+window.handleLeave = async () => {
+  if (!activeRid) return;
+  try {
+    await deleteDoc(doc(db, "users", currentU.uid, "relays", activeRid));
+    await deleteDoc(doc(db, "relays", activeRid, "members", currentU.uid));
+    closeModal("modal-settings");
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    async function setStatus(status) {
-      if (!state.user || !state.activeRelayId || !state.selectedDate) return showToast('Select a date first');
-      const ref = doc(db, COLLECTIONS.relays, state.activeRelayId, 'statuses', `${state.selectedDate}_${state.user.uid}`);
-      if (!status) {
-        await deleteDoc(ref);
-        showToast('Status cleared');
-        return;
-      }
+window.handleDelete = async () => {
+  if (!activeRid) return;
+  if (!confirm("DELETE RELAY?")) return;
+  try {
+    await deleteDoc(doc(db, "relays", activeRid));
+    await deleteDoc(doc(db, "users", currentU.uid, "relays", activeRid));
+    activeRid = null;
+    localStorage.removeItem("RELAY_RID");
+    closeModal("modal-settings");
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+// ---------- MODALS / AUTH TOGGLE ----------
+window.openModal = (id) => document.getElementById(id).classList.add("active");
+window.closeModal = (id) => document.getElementById(id).classList.remove("active");
+window.toggleAuth = (m) => {
+  document.getElementById("auth-login").classList.toggle("hidden", m === "signup");
+  document.getElementById("auth-signup").classList.toggle("hidden", m === "login");
+};
+
+// ---------- CALENDAR / STATUS / PLANS ----------
+window.modMonth = (v) => {
+  viewDate.setMonth(viewDate.getMonth() + v);
+  renderCal();
+};
+
+window.setStatus = async (s) => {
+  if (!selDate || !activeRid) return showToast("Select a day");
+  const docId = `${selDate}_${currentU.uid}`;
+  const ref = doc(db, "relays", activeRid, "statuses", docId);
+  try {
+    if (!s) {
+      await deleteDoc(ref);
+    } else {
       await setDoc(ref, {
-        uid: state.user.uid,
-        dateKey: state.selectedDate,
-        status,
-        updatedAt: serverTimestamp()
+        dateKey: selDate,
+        userId: currentU.uid,
+        status: s,
+        updated: Date.now()
       });
-      showToast('Status updated');
     }
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    async function confirmPlan() {
-      if (!state.user || !state.activeRelayId || !state.selectedDate) return showToast('Select a date first');
-      if (!state.members.length) return showToast('No members found');
-      const stats = summarizeStatuses(state.statusesByDate[state.selectedDate] || {});
-      if (stats.free === 0) return showToast('Need at least one free member');
-      await setDoc(doc(db, COLLECTIONS.relays, state.activeRelayId, 'plans', state.selectedDate), {
-        dateKey: state.selectedDate,
-        confirmedBy: state.user.uid,
-        confirmedAt: serverTimestamp()
-      });
-      showToast('Plan confirmed');
-    }
+window.handlePropose = async () => {
+  if (!selDate || !activeRid) return showToast("Select a date");
+  const planRef = doc(db, "relays", activeRid, "plans", selDate);
+  try {
+    await setDoc(planRef, {
+      dateKey: selDate,
+      relayId: activeRid,
+      creatorId: currentU.uid,
+      acceptedBy: [currentU.uid],
+      rejectedBy: [],
+      status: members.length === 1 ? "confirmed" : "pending",
+      location: "",
+      address: "",
+      timeStart: "",
+      timeEnd: "",
+      createdAt: Date.now()
+    });
+    showToast("Plan Proposed");
+    const me = profiles[currentU.uid]?.firstName || "A member";
+    createNotif("propose", `${me} proposed a plan for ${selDate}`, activeRid);
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    async function switchRelay(relayId) {
-      state.activeRelayId = relayId;
-      closeModal('settings-modal');
-      await bindActiveRelay();
-    }
+window.updatePlanDetails = async () => {
+  if (!selDate || !activeRid) return;
+  const plan = plans[selDate];
+  if (!plan || plan.creatorId !== currentU.uid) return;
+  try {
+    await updateDoc(doc(db, "relays", activeRid, "plans", selDate), {
+      location: document.getElementById("plan-location").value,
+      address: document.getElementById("plan-address").value,
+      timeStart: document.getElementById("plan-time-start").value,
+      timeEnd: document.getElementById("plan-time-end").value
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    async function bindSession(user) {
-      clearListeners('session');
-      clearListeners('relay');
-      state.user = user;
-      await ensureProfile(user);
+window.handleDeletePlan = async () => {
+  if (!selDate || !activeRid) return;
+  try {
+    await deleteDoc(doc(db, "relays", activeRid, "plans", selDate));
+    showToast("Plan Terminated");
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-      unsubs.session.push(onSnapshot(doc(db, COLLECTIONS.profiles, user.uid), (snap) => {
-        if (snap.exists()) state.profile = snap.data();
-        renderProfileForm();
-      }, async () => {
-        try { await ensureProfile(user); } catch {}
-        renderProfileForm();
-      }));
-    }
+const respondToPlan = async (dateKey, type) => {
+  if (!activeRid || !dateKey) return;
+  const ref = doc(db, "relays", activeRid, "plans", dateKey);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const plan = snap.data();
+    let accepted = (plan.acceptedBy || []).filter((u) => u !== currentU.uid);
+    let rejected = (plan.rejectedBy || []).filter((u) => u !== currentU.uid);
+    if (type === "accept") accepted.push(currentU.uid);
+    else rejected.push(currentU.uid);
 
-    async function loadUserRelays(user) {
-      const relaySnap = await getDocs(collection(db, COLLECTIONS.relays));
-      const memberships = [];
-      for (const relayDoc of relaySnap.docs) {
-        const memberSnap = await getDoc(doc(db, COLLECTIONS.relays, relayDoc.id, 'members', user.uid));
-        if (memberSnap.exists()) memberships.push(relayDoc.id);
-      }
-      state.userRelays = relaySnap.docs
-        .filter((d) => memberships.includes(d.id))
-        .map((d) => ({ id: d.id, ...d.data() }));
-      if (!state.activeRelayId || !state.userRelays.some((r) => r.id === state.activeRelayId)) {
-        state.activeRelayId = state.userRelays[0]?.id || null;
-      }
-      renderRelayLists();
-    }
+    const memberCount = members.length || 1;
+    const newStatus =
+      rejected.length > 0
+        ? "rejected"
+        : accepted.length >= memberCount
+        ? "confirmed"
+        : "pending";
 
-    async function bindActiveRelay() {
-      clearListeners('relay');
-      if (!state.activeRelayId) {
-        setScreen('setup-screen');
-        return;
-      }
-
-      finishBoot('app-screen');
-      renderRelayLists();
-
-      const relayRef = doc(db, COLLECTIONS.relays, state.activeRelayId);
-      const membersRef = query(collection(db, COLLECTIONS.relays, state.activeRelayId, 'members'));
-      const statusesRef = query(collection(db, COLLECTIONS.relays, state.activeRelayId, 'statuses'));
-      const plansRef = query(collection(db, COLLECTIONS.relays, state.activeRelayId, 'plans'), orderBy('dateKey', 'asc'));
-
-      unsubs.relay.push(onSnapshot(relayRef, (snap) => {
-        if (!snap.exists()) {
-          state.activeRelayId = null;
-          showToast('Relay no longer exists');
-          setScreen('setup-screen');
-          return;
-        }
-        state.activeRelay = { id: snap.id, ...snap.data() };
-        renderHeader();
-        renderRelayLists();
-      }));
-
-      unsubs.relay.push(onSnapshot(membersRef, async (snap) => {
-        state.members = snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
-        const missing = state.members.filter((m) => !state.profiles[m.uid]).map((m) => m.uid);
-        if (missing.length) {
-          const docs = await Promise.all(missing.map((uid) => getDoc(doc(db, COLLECTIONS.profiles, uid))));
-          docs.forEach((d) => { if (d.exists()) state.profiles[d.id] = d.data(); });
-        }
-        renderMembers();
-        renderCalendar();
-        renderSelectedDay();
-        renderBestDates();
-      }));
-
-      unsubs.relay.push(onSnapshot(statusesRef, (snap) => {
-        state.statusesByDate = {};
-        snap.docs.forEach((d) => {
-          const data = d.data();
-          if (!state.statusesByDate[data.dateKey]) state.statusesByDate[data.dateKey] = {};
-          state.statusesByDate[data.dateKey][data.uid] = data.status;
-        });
-        renderCalendar();
-        renderSelectedDay();
-        renderBestDates();
-      }));
-
-      unsubs.relay.push(onSnapshot(plansRef, (snap) => {
-        state.plans = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        renderPlans();
-      }));
-    }
-
-    function toggleAuth(mode) {
-      $('login-pane').classList.toggle('hidden-safe', mode === 'signup');
-      $('signup-pane').classList.toggle('hidden-safe', mode === 'login');
-    }
-
-    function attachEvents() {
-      $('show-signup-btn').onclick = () => toggleAuth('signup');
-      $('show-login-btn').onclick = () => toggleAuth('login');
-      $('login-btn').onclick = () => signIn().catch(handleError);
-      $('signup-btn').onclick = () => signUp().catch(handleError);
-      $('logout-btn').onclick = () => signOut(auth);
-      $('logout-from-setup-btn').onclick = () => signOut(auth);
-      $('save-profile-btn').onclick = () => saveProfile().catch(handleError);
-      $('create-relay-btn').onclick = () => createRelay().catch(handleError);
-      $('join-relay-btn').onclick = () => joinRelay().catch(handleError);
-      $('leave-relay-btn').onclick = () => leaveRelay().catch(handleError);
-      $('open-settings-btn').onclick = () => openModal('settings-modal');
-      $('close-settings-btn').onclick = () => closeModal('settings-modal');
-      $('best-dates-btn').onclick = () => { renderBestDates(); openModal('best-dates-modal'); };
-      $('close-best-dates-btn').onclick = () => closeModal('best-dates-modal');
-      $('prev-month-btn').onclick = () => { state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() - 1, 1); renderCalendar(); };
-      $('next-month-btn').onclick = () => { state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() + 1, 1); renderCalendar(); };
-      $('clear-status-btn').onclick = () => setStatus(null).catch(handleError);
-      $('confirm-day-btn').onclick = () => confirmPlan().catch(handleError);
-      document.querySelectorAll('.status-btn').forEach((btn) => {
-        btn.onclick = () => setStatus(btn.dataset.status).catch(handleError);
-      });
-      $('tab-calendar').onclick = () => {
-        $('calendar-view').classList.remove('hidden-safe');
-        $('agenda-view').classList.add('hidden-safe');
-        $('tab-calendar').classList.add('active');
-        $('tab-agenda').classList.remove('active');
-        $('tab-agenda').classList.add('text-slate-400');
-      };
-      $('tab-agenda').onclick = () => {
-        $('calendar-view').classList.add('hidden-safe');
-        $('agenda-view').classList.remove('hidden-safe');
-        $('tab-agenda').classList.add('active');
-        $('tab-calendar').classList.remove('active');
-        $('tab-agenda').classList.remove('text-slate-400');
-      };
-    }
-
-    function handleError(error) {
-      const code = error?.code ? ` (${error.code})` : '';
-      const message = error?.message || 'Something went wrong';
-      console.error('Relay app error:', { code: error?.code || null, message, raw: error });
-      showToast(`${message}${code}`);
-    }
-
-    attachEvents();
-
-    setTimeout(() => {
-      if (!bootResolved) {
-        console.warn('Boot fallback activated');
-        finishBoot('auth-screen');
-      }
-    }, 2500);
-
-    onAuthStateChanged(auth, async (user) => {
-      try {
-        if (!user) {
-          clearListeners('session');
-          clearListeners('relay');
-          state.user = null;
-          state.profile = null;
-          state.userRelays = [];
-          state.activeRelayId = null;
-          state.activeRelay = null;
-          state.members = [];
-          state.profiles = {};
-          state.statusesByDate = {};
-          state.plans = [];
-          finishBoot('auth-screen');
-          return;
-        }
-        setScreen('loading-screen');
-        await bindSession(user);
-        await loadUserRelays(user);
-        renderProfileForm();
-        if (state.activeRelayId) await bindActiveRelay();
-        else finishBoot('setup-screen');
-      } catch (error) {
-        handleError(error);
-        finishBoot('auth-screen');
-      }
+    tx.update(ref, {
+      acceptedBy: accepted,
+      rejectedBy: rejected,
+      status: newStatus
     });
 
-    lucide.createIcons();
-  </script>
+    const me = profiles[currentU.uid]?.firstName || "A member";
+    if (newStatus === "confirmed") {
+      createNotif("finalize", `BOOM! The plan for ${dateKey} is finalized!`, activeRid);
+    } else if (type === "reject") {
+      createNotif("veto", `${me} vetoed the plan for ${dateKey}`, activeRid);
+    }
+  });
+};
 
-  <!--
-    FIRESTORE SHAPE THIS FILE EXPECTS
+const withdrawResponse = async (dateKey) => {
+  if (!activeRid || !dateKey) return;
+  const ref = doc(db, "relays", activeRid, "plans", dateKey);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const plan = snap.data();
+    const accepted = (plan.acceptedBy || []).filter((u) => u !== currentU.uid);
+    const rejected = (plan.rejectedBy || []).filter((u) => u !== currentU.uid);
+    const newStatus =
+      rejected.length > 0
+        ? "rejected"
+        : accepted.length >= (members.length || 1)
+        ? "confirmed"
+        : "pending";
+    tx.update(ref, {
+      acceptedBy: accepted,
+      rejectedBy: rejected,
+      status: newStatus
+    });
+  });
+};
 
-    profiles/{uid}
-      firstName, lastName, email, createdAt, updatedAt
+window.handlePlanResp = async (type) => {
+  if (!selDate) return;
+  try {
+    await respondToPlan(selDate, type);
+  } catch (e) {
+    console.error(e);
+  }
+};
+window.handlePlanReset = async () => {
+  if (!selDate) return;
+  try {
+    await withdrawResponse(selDate);
+    showToast("Response Withdrawn");
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-    relays/{relayId}
-      name, ownerUid, memberCount, createdAt, updatedAt
+// ---------- RENDER DAY / AGENDA / CAL ----------
+window.renderDay = () => {
+  const empty = document.getElementById("day-empty");
+  const cont = document.getElementById("day-content");
+  if (!selDate) {
+    empty.classList.remove("hidden");
+    cont.classList.add("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  cont.classList.remove("hidden");
 
-    relays/{relayId}/members/{uid}
-      uid, role, joinedAt
+  const dayStats = statuses[selDate] || {};
+  const plan = plans[selDate];
+  const list = document.getElementById("day-members");
+  list.innerHTML = "";
 
-    relays/{relayId}/statuses/{dateKey_uid}
-      uid, dateKey, status, updatedAt
+  let blocks = false;
+  members.forEach((uid) => {
+    const s = dayStats[uid];
+    const p = profiles[uid] || { firstName: "Sync..." };
+    if (s === "shift" || s === "unavail") blocks = true;
+    let icon = '<div class="w-2 h-2 rounded-full bg-slate-200"></div>';
+    if (plan) {
+      if (plan.acceptedBy?.includes(uid))
+        icon = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>';
+      else if (plan.rejectedBy?.includes(uid))
+        icon = '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>';
+    }
+    list.innerHTML += `
+      <div class="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-50">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-slate-50 overflow-hidden border">
+            ${
+              p.photo
+                ? `<img src="${p.photo}" class="w-full h-full object-cover">`
+                : `<i data-lucide="user" class="w-4 h-4 text-slate-300 m-2"></i>`
+            }
+          </div>
+          <span class="text-[10px] font-black text-slate-700 uppercase">
+            ${p.firstName}${uid === currentU.uid ? " (You)" : ""}
+          </span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="text-[8px] font-black uppercase px-2 py-0.5 rounded-lg ${
+            s === "free"
+              ? "bg-emerald-50 text-emerald-600"
+              : s === "shift"
+              ? "bg-red-50 text-red-600"
+              : s === "unavail"
+              ? "bg-amber-50 text-amber-600"
+              : "bg-slate-50 text-slate-400"
+          }">
+            ${s || "Not Set"}
+          </div>
+          ${icon}
+        </div>
+      </div>`;
+  });
 
-    relays/{relayId}/plans/{dateKey}
-      dateKey, confirmedBy, confirmedAt
+  const btnProp = document.getElementById("btn-propose");
+  const planUI = document.getElementById("plan-ui");
+  const detailFields = document.getElementById("plan-confirmed-details");
 
-    IMPORTANT NOTE
-    This rebuild intentionally removes the old split model:
-    - no separate users/{uid}/relays mirror
-    - no global public relay_members collection
-    - no global relay_statuses collection
-    - no notifications collection yet
+  if (plan) {
+    btnProp.classList.add("hidden");
+    planUI.classList.remove("hidden");
 
-    It is simpler and much harder to corrupt manually.
-  -->
+    const badge = document.getElementById("plan-status");
+    const meta = document.getElementById("plan-meta");
+    const cnt = document.getElementById("plan-count");
+    const creator = profiles[plan.creatorId];
+
+    meta.innerText = `Proposed by ${creator?.firstName || "Sync..."}`;
+    cnt.innerText = `${plan.acceptedBy?.length || 0}/${members.length}`;
+
+    document
+      .getElementById("btn-delete-plan")
+      .classList.toggle("hidden", plan.creatorId !== currentU.uid);
+    const hasResponded =
+      plan.acceptedBy?.includes(currentU.uid) ||
+      plan.rejectedBy?.includes(currentU.uid);
+    document
+      .getElementById("btn-withdraw")
+      .classList.toggle("hidden", !hasResponded);
+
+    if (plan.status === "confirmed") {
+      badge.innerText = "Finalized";
+      badge.className =
+        "text-[9px] font-black uppercase tracking-widest bg-emerald-500 text-white px-3 py-1 rounded-full w-max mb-1";
+      planUI.classList.remove("pulse-plan");
+      document.getElementById("plan-actions").classList.add("hidden");
+      detailFields.classList.remove("hidden");
+
+      const isOrg = plan.creatorId === currentU.uid;
+      document.getElementById("plan-location").value = plan.location || "";
+      document.getElementById("plan-address").value = plan.address || "";
+      document.getElementById("plan-time-start").value = plan.timeStart || "";
+      document.getElementById("plan-time-end").value = plan.timeEnd || "";
+
+      ["plan-location", "plan-address", "plan-time-start", "plan-time-end"].forEach(
+        (id) => {
+          document.getElementById(id).readOnly = !isOrg;
+        }
+      );
+    } else {
+      badge.innerText = plan.status === "rejected" ? "Vetoed" : "Awaiting All";
+      badge.className = `text-[9px] font-black uppercase tracking-widest ${
+        plan.status === "rejected" ? "bg-rose-500" : "bg-indigo-600"
+      } text-white px-3 py-1 rounded-full w-max mb-1`;
+      planUI.classList.toggle("pulse-plan", plan.status === "pending");
+      document.getElementById("plan-actions").classList.remove("hidden");
+      detailFields.classList.add("hidden");
+    }
+    document
+      .getElementById("btn-accept")
+      .classList.toggle("opacity-30", plan.acceptedBy?.includes(currentU.uid));
+    document
+      .getElementById("btn-reject")
+      .classList.toggle("opacity-30", plan.rejectedBy?.includes(currentU.uid));
+  } else {
+    planUI.classList.add("hidden");
+    btnProp.classList.remove("hidden");
+    btnProp.disabled = blocks;
+    btnProp.innerHTML = blocks
+      ? `<i data-lucide="lock" class="w-4 h-4"></i> Availability Conflict`
+      : `<i data-lucide="send" class="w-4 h-4 -rotate-45"></i> Propose Plan`;
+    btnProp.className = blocks
+      ? "w-full bg-slate-100 text-slate-300 py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed flex items-center justify-center gap-2"
+      : "w-full bg-indigo-600 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95";
+  }
+  lucide.createIcons();
+};
+
+window.renderAgenda = () => {
+  const list = document.getElementById("agenda-list");
+  const empty = document.getElementById("agenda-empty");
+  const sortedKeys = Object.keys(plans).sort((a, b) => a.localeCompare(b));
+
+  if (!sortedKeys.length) {
+    empty.classList.remove("hidden");
+    list.innerHTML = "";
+    return;
+  }
+  empty.classList.add("hidden");
+
+  list.innerHTML = sortedKeys
+    .map((dk) => {
+      const p = plans[dk];
+      const d = fromKey(dk);
+      const isConfirmed = p.status === "confirmed";
+      const dateLabel = d.toLocaleDateString("default", {
+        weekday: "long",
+        month: "short",
+        day: "numeric"
+      });
+      const metaBlock =
+        isConfirmed && (p.timeStart || p.address)
+          ? `
+            <div class="space-y-2 pt-3 border-t border-slate-50">
+              ${
+                p.timeStart
+                  ? `<div class="flex items-center gap-2 text-slate-500">
+                       <i data-lucide="clock" class="w-3 h-3"></i>
+                       <span class="text-[10px] font-bold">
+                         ${p.timeStart}${p.timeEnd ? " - " + p.timeEnd : ""}
+                       </span>
+                     </div>`
+                  : ""
+              }
+              ${
+                p.address
+                  ? `<div class="flex items-center gap-2 text-slate-500">
+                       <i data-lucide="map-pin" class="w-3 h-3"></i>
+                       <span class="text-[10px] font-bold truncate">${p.address}</span>
+                     </div>`
+                  : ""
+              }
+            </div>`
+          : `
+            <div class="text-[9px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-2">
+              <i data-lucide="users" class="w-3 h-3"></i>
+              ${p.acceptedBy.length} of ${members.length} Ready
+            </div>`;
+
+      return `
+        <div class="premium-card p-5 relative overflow-hidden active:scale-[0.98] transition-transform"
+             onclick="selDate='${dk}'; document.getElementById('detail-date').innerText='${dateLabel}'; renderCal(); renderDay(); switchDashTab('cal');">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${dateLabel}</p>
+              <h4 class="text-lg font-black text-slate-900 tracking-tight mt-1">
+                ${p.location || "Trip Details Pending"}
+              </h4>
+            </div>
+            <span class="text-[8px] font-black uppercase px-2.5 py-1 rounded-full ${
+              isConfirmed ? "bg-emerald-100 text-emerald-600" : "bg-indigo-100 text-indigo-600"
+            }">
+              ${isConfirmed ? "Confirmed" : "Awaiting All"}
+            </span>
+          </div>
+          ${metaBlock}
+        </div>`;
+    })
+    .join("");
+  lucide.createIcons();
+};
+
+window.renderCal = () => {
+  const grid = document.getElementById("cal-grid");
+  grid.innerHTML = "";
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth();
+  document.getElementById("cal-month").innerText = viewDate.toLocaleString(
+    "default",
+    { month: "long", year: "numeric" }
+  );
+  const start = new Date(y, m, 1).getDay();
+  const days = new Date(y, m + 1, 0).getDate();
+
+  for (let i = 0; i < start; i++) grid.appendChild(document.createElement("div"));
+
+  for (let i = 1; i <= days; i++) {
+    const dk = toKey(new Date(y, m, i));
+    const dayStats = statuses[dk] || {};
+    const plan = plans[dk];
+    let hasBlocker = false;
+    let freeCount = 0;
+    members.forEach((uid) => {
+      if (dayStats[uid] === "shift" || dayStats[uid] === "unavail") hasBlocker = true;
+      if (dayStats[uid] === "free") freeCount++;
+    });
+
+    const el = document.createElement("div");
+    let bg = "bg-white border-slate-100 text-slate-700";
+    if (plan && plan.status === "confirmed")
+      bg = "bg-indigo-600 text-white border-indigo-700 shadow-lg";
+    else if (hasBlocker)
+      bg = "bg-slate-50 border-slate-100 text-slate-300";
+    else if (freeCount === members.length && members.length > 0)
+      bg = "bg-emerald-50 border-emerald-100 text-emerald-700";
+    if (dk === selDate) bg += " selected-day";
+    el.className =
+      "calendar-day aspect-square rounded-2xl border flex flex-col items-center justify-center cursor-pointer overflow-hidden " +
+      bg;
+    el.innerHTML = `<span class="text-[11px] font-black">${i}</span>`;
+
+    const dots = document.createElement("div");
+    dots.className = "flex gap-0.5 mt-1";
+    members.forEach((uid) => {
+      const s = dayStats[uid];
+      if (s) {
+        const d = document.createElement("div");
+        d.className = `status-dot ${
+          s === "free" ? "bg-free" : s === "shift" ? "bg-shift" : "bg-busy"
+        }`;
+        dots.appendChild(d);
+      }
+    });
+    el.appendChild(dots);
+
+    if (plan && plan.status !== "confirmed") {
+      const bar = document.createElement("div");
+      bar.className =
+        "absolute bottom-0 left-0 right-0 h-1 " +
+        (plan.status === "rejected" ? "bg-rose-400" : "bg-indigo-400");
+      el.appendChild(bar);
+    }
+    el.onclick = () => {
+      selDate = dk;
+      document.getElementById("detail-date").innerText = fromKey(dk).toLocaleDateString(
+        "default",
+        { weekday: "long", month: "short", day: "numeric" }
+      );
+      renderCal();
+      renderDay();
+    };
+    grid.appendChild(el);
+  }
+};
+
+lucide.createIcons();
+</script>
+
 </body>
 </html>
