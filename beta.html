@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Relay - Professional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary: #4F46E5; --bg: #F8FAFC; }
+        body { font-family: 'Inter', sans-serif; background-color: #F1F5F9; overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+        
+        .app-container { 
+            height: 100dvh; width: 100vw; max-width: 480px; margin: 0 auto; 
+            background: white; position: relative; overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: 0 0 40px rgba(0,0,0,0.1);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .premium-card { background: white; border: 1px solid #F1F5F9; border-radius: 2rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02); }
+        
+        .calendar-day { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+        .selected-day { border: 2px solid var(--primary) !important; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+
+        .modal-slide-up { transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; visibility: hidden; position: absolute; inset: 0; }
+        .modal-slide-up.active { transform: translateY(0); visibility: visible; }
+
+        .tab-bar { background: rgba(255, 255, 255, 0.85); backdrop-filter: saturate(180%) blur(20px); border-top: 0.5px solid rgba(0,0,0,0.08); }
+        
+        .status-dot { width: 4px; height: 4px; border-radius: 50%; }
+        .bg-free { background-color: #10B981; }
+        .bg-shift { background-color: #EF4444; }
+        .bg-busy { background-color: #F59E0B; }
+
+        .tab-btn { position: relative; transition: color 0.2s; }
+        .tab-btn.active { color: var(--primary); }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -8px; left: 0; right: 0; height: 2px; background: var(--primary); border-radius: 10px; }
+
+        .notif-badge { 
+            position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; 
+            background: #EF4444; color: white; font-size: 9px; font-weight: 900;
+            border-radius: 50%; border: 2px solid white; display: none; align-items: center; justify-content: center;
+        }
+        .notif-badge.active { display: flex; }
+
+        #toast { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 9999; }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl opacity-0 pointer-events-none -translate-y-5 flex items-center gap-3 w-[85%] max-w-[400px] text-center justify-center">
+        <i data-lucide="bell" class="w-4 h-4 text-indigo-400"></i>
+        <span id="toast-msg">Syncing...</span>
+    </div>
+
+    <div class="app-container">
+        
+        <div id="screen-loading" class="absolute inset-0 bg-white z-[500] flex flex-col items-center justify-center transition-opacity duration-500">
+            <div class="w-12 h-12 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Relay Cloud Sync</p>
+        </div>
+
+        <section id="screen-auth" class="absolute inset-0 z-[400] bg-white flex flex-col px-8 pt-20 hidden">
+            <div class="text-center mb-12 text-slate-900">
+                <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-100/50">
+                    <i data-lucide="zap" class="w-10 h-10"></i>
+                </div>
+                <h1 class="text-4xl font-black tracking-tighter italic">Relay.</h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-3">Identity Verified Planning</p>
+            </div>
+
+            <div id="auth-login" class="space-y-4">
+                <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white" placeholder="Email Address">
+                <input type="password" id="login-pass" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white" placeholder="Password">
+                <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">Sign In</button>
+                <button onclick="toggleAuth('signup')" class="w-full text-[10px] font-black text-indigo-600 uppercase tracking-widest pt-4">Create New Account</button>
+            </div>
+
+            <div id="auth-signup" class="space-y-4 hidden overflow-y-auto no-scrollbar pb-10">
+                <div class="flex flex-col items-center mb-4">
+                    <label for="signup-avatar" class="cursor-pointer group relative">
+                        <div class="w-24 h-24 rounded-full bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+                            <img id="signup-avatar-preview" src="" class="hidden w-full h-full object-cover">
+                            <i data-lucide="camera" id="signup-avatar-icon" class="w-8 h-8 text-slate-300"></i>
+                        </div>
+                    </label>
+                    <input type="file" id="signup-avatar" class="hidden" accept="image/*" onchange="previewAvatar(event, 'signup-avatar-preview')">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="signup-f" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="First Name">
+                    <input type="text" id="signup-l" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Last Name">
+                </div>
+                <input type="email" id="signup-e" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Email">
+                <input type="password" id="signup-p" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Password (6+ Characters)">
+                <button onclick="handleSignup()" class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">Create Account</button>
+                <button onclick="toggleAuth('login')" class="w-full text-[10px] font-black text-slate-400 uppercase py-2">Back to Login</button>
+            </div>
+        </section>
+
+        <section id="screen-setup" class="absolute inset-0 z-[300] bg-white flex flex-col px-8 pt-20 hidden">
+            <div class="text-center mb-10 text-slate-900">
+                <h2 class="text-3xl font-black tracking-tight italic uppercase">Relays</h2>
+                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Active Teams</p>
+            </div>
+            <div id="setup-relay-list" class="space-y-3 mb-8 max-h-[300px] overflow-y-auto no-scrollbar"></div>
+            <div class="mt-auto pb-10 space-y-4">
+                <div class="premium-card p-6 border-indigo-100 bg-indigo-50/20">
+                    <input type="text" id="join-code" class="w-full bg-white border border-indigo-100 p-4 rounded-2xl text-center text-xl font-mono font-black uppercase tracking-widest outline-none" placeholder="CODE">
+                    <button onclick="handleJoin()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest mt-3 active:scale-95">Link Relay</button>
+                </div>
+                <div class="premium-card p-6">
+                    <input type="text" id="new-name" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-center text-sm font-bold" placeholder="Relay Name">
+                    <button onclick="handleCreate()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest mt-3 shadow-lg active:scale-95">Launch Relay</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-dash" class="absolute inset-0 flex flex-col hidden">
+            <header class="bg-white px-6 pt-12 pb-5 flex flex-col border-b border-slate-50 shrink-0">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-4">
+                        <button onclick="openModal('modal-settings')" class="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 shadow-sm relative">
+                            <img id="dash-avatar" src="" class="hidden w-full h-full object-cover">
+                            <i id="dash-avatar-icon" data-lucide="user" class="w-5 h-5 text-slate-400"></i>
+                        </button>
+                        <div>
+                            <h2 id="dash-relay-name" class="text-sm font-black text-slate-900 uppercase tracking-tight leading-none mb-1">---</h2>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">Code: <span id="dash-relay-code" class="text-indigo-600 font-mono">XXXXX</span></p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openModal('modal-notifications')" class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 relative">
+                            <i data-lucide="bell" class="w-4 h-4"></i>
+                            <div id="notif-badge" class="notif-badge">0</div>
+                        </button>
+                        <button onclick="setScreen('screen-setup')" class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+                            <i data-lucide="grid" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex gap-8 px-2 border-t border-slate-50 pt-4">
+                    <button onclick="switchTab('cal')" id="tab-cal" class="tab-btn active text-[10px] font-black uppercase tracking-[0.2em]">Calendar</button>
+                    <button onclick="switchTab('agenda')" id="tab-agenda" class="tab-btn text-[10px] font-black uppercase tracking-[0.2em]">Agenda</button>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-40">
+                <div id="view-calendar" class="space-y-6">
+                    <section class="premium-card p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 id="cal-month" class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Month</h3>
+                            <div class="flex gap-2">
+                                <button onclick="modMonth(-1)" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                                <button onclick="modMonth(1)" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                        <div id="cal-grid" class="grid grid-cols-7 gap-y-3 gap-x-1.5"></div>
+                    </section>
+
+                    <section class="premium-card p-6 min-h-[250px] flex flex-col">
+                        <div id="day-empty" class="flex-1 flex flex-col items-center justify-center text-slate-300 py-10">
+                            <i data-lucide="calendar" class="w-8 h-8 mb-3 opacity-20"></i>
+                            <p class="text-[10px] font-black uppercase tracking-[0.3em]">Select a Day</p>
+                        </div>
+                        <div id="day-content" class="hidden flex flex-col h-full">
+                            <p id="detail-date" class="text-center text-xs font-black text-indigo-600 uppercase tracking-[0.4em] mb-6">---</p>
+                            <div id="day-members" class="space-y-2 mb-8"></div>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="view-agenda" class="hidden space-y-4">
+                    <div id="agenda-list" class="space-y-4 text-center py-20 text-slate-300 uppercase font-black text-[10px] tracking-widest">No confirmed plans</div>
+                </div>
+            </main>
+
+            <div id="footer-availability" class="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto p-6 pb-10 pointer-events-none">
+                <div class="tab-bar rounded-[2.5rem] p-2 flex justify-between items-center shadow-2xl pointer-events-auto border border-white">
+                    <button onclick="setStatus('free')" class="flex-1 py-4 flex flex-col items-center gap-1">
+                        <div class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white shadow-lg"></div>
+                        <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">Free</span>
+                    </button>
+                    <button onclick="setStatus('shift')" class="flex-1 py-4 flex flex-col items-center gap-1">
+                        <div class="w-6 h-6 rounded-full bg-red-500 border-2 border-white shadow-lg"></div>
+                        <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">Shift</span>
+                    </button>
+                    <button onclick="setStatus('busy')" class="flex-1 py-4 flex flex-col items-center gap-1">
+                        <div class="w-6 h-6 rounded-full bg-amber-500 border-2 border-white shadow-lg"></div>
+                        <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">Busy</span>
+                    </button>
+                    <button onclick="setStatus(null)" class="flex-1 py-4 flex flex-col items-center gap-1">
+                        <div class="w-6 h-6 rounded-full bg-slate-100 border-2 border-white"></div>
+                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Reset</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="modal-notifications" class="modal-slide-up bg-slate-50 flex flex-col">
+            <header class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <button onclick="closeModal('modal-notifications')" class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Done</button>
+                <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Notifications</h3>
+                <button onclick="clearNotifs()" class="text-[8px] font-black text-rose-500 uppercase tracking-widest">Clear</button>
+            </header>
+            <div id="notif-list" class="p-6 space-y-4 overflow-y-auto no-scrollbar"></div>
+        </section>
+
+        <section id="modal-settings" class="modal-slide-up bg-slate-50 flex flex-col">
+            <header class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <button onclick="closeModal('modal-settings')" class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Done</button>
+                <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Identity</h3>
+                <div class="w-10"></div>
+            </header>
+            <div class="p-6 space-y-6">
+                <div class="premium-card p-6 space-y-6">
+                    <div class="flex flex-col items-center gap-4">
+                        <label for="edit-avatar" class="cursor-pointer relative">
+                            <div class="w-20 h-20 rounded-[2rem] bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
+                                <img id="set-avatar" src="" class="hidden w-full h-full object-cover">
+                                <i data-lucide="camera" id="set-avatar-icon" class="w-6 h-6 text-slate-300"></i>
+                            </div>
+                        </label>
+                        <input type="file" id="edit-avatar" class="hidden" accept="image/*" onchange="previewAvatar(event, 'set-avatar')">
+                    </div>
+                    <div class="space-y-4">
+                        <input type="text" id="set-fname" class="w-full bg-slate-100 border-none p-4 rounded-xl text-sm font-bold" placeholder="First Name">
+                        <input type="text" id="set-lname" class="w-full bg-slate-100 border-none p-4 rounded-xl text-sm font-bold" placeholder="Last Name">
+                        <button onclick="saveProfile()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest">Update Profile</button>
+                    </div>
+                </div>
+                <button onclick="handleLogout()" class="w-full py-10 text-slate-300 font-black uppercase text-[10px] tracking-[0.5em]">Sign Out</button>
+            </div>
+        </section>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, updateDoc, deleteDoc, addDoc, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8APWhg6rpIAslOAAnjpZM5tDoUAgsKBY",
+            authDomain: "relay-8ad82.firebaseapp.com",
+            projectId: "relay-8ad82",
+            storageBucket: "relay-8ad82.firebasestorage.app",
+            messagingSenderId: "912829496349",
+            appId: "1:912829496349:web:e9130d03f97d5e6ffa1af4"
+        };
+        
+        const appId = 'relay-professional-v2';
+        const firebaseApp = initializeApp(firebaseConfig);
+        const auth = getAuth(firebaseApp);
+        const db = getFirestore(firebaseApp);
+
+        // --- GLOBAL STATE ---
+        let state = {
+            user: null,
+            activeRid: localStorage.getItem('RELAY_RID'),
+            profiles: {},
+            userRelays: [],
+            currentRelay: null,
+            members: [],
+            statuses: {},
+            notifs: [],
+            viewDate: new Date(),
+            selDate: null
+        };
+
+        let unsubscribers = [];
+
+        const killSync = () => { unsubscribers.forEach(u => u()); unsubscribers = []; };
+
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-5');
+            t.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                t.classList.add('opacity-0', 'pointer-events-none', '-translate-y-5');
+                t.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        };
+
+        window.setScreen = (id) => {
+            ['screen-auth', 'screen-setup', 'screen-dash'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById('screen-loading').classList.add('opacity-0', 'pointer-events-none');
+            lucide.createIcons();
+        };
+
+        window.switchTab = (t) => {
+            document.getElementById('view-calendar').classList.toggle('hidden', t !== 'cal');
+            document.getElementById('view-agenda').classList.toggle('hidden', t !== 'agenda');
+            document.getElementById('tab-cal').classList.toggle('active', t === 'cal');
+            document.getElementById('tab-agenda').classList.toggle('active', t === 'agenda');
+        };
+
+        window.openModal = (id) => document.getElementById(id).classList.add('active');
+        window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+
+        const startGlobalSync = (user) => {
+            killSync();
+
+            // 1. Sync All Profiles
+            unsubscribers.push(onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'profiles'), (s) => {
+                s.forEach(d => state.profiles[d.id] = d.data());
+                refreshUI();
+            }));
+
+            // 2. Sync User's personal relay list
+            unsubscribers.push(onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'relays'), (s) => {
+                state.userRelays = s.docs.map(d => d.id);
+                if (state.userRelays.length === 0) {
+                    window.setScreen('screen-setup');
+                } else {
+                    if (!state.activeRid || !state.userRelays.includes(state.activeRid)) {
+                        state.activeRid = state.userRelays[0];
+                        localStorage.setItem('RELAY_RID', state.activeRid);
+                    }
+                    syncActiveRelay();
+                    window.setScreen('screen-dash');
+                }
+                renderRelayList();
+            }));
+        };
+
+        const syncActiveRelay = () => {
+            if (!state.activeRid) return;
+            const base = ['artifacts', appId, 'public', 'data'];
+
+            // Meta
+            unsubscribers.push(onSnapshot(doc(db, ...base, 'relays', state.activeRid), (d) => {
+                if (d.exists()) state.currentRelay = d.data();
+                refreshUI();
+            }));
+
+            // Members
+            unsubscribers.push(onSnapshot(collection(db, ...base, 'relay_members'), (s) => {
+                state.members = s.docs.filter(d => d.data().relayId === state.activeRid).map(d => d.data().userId);
+                refreshUI();
+            }));
+
+            // Statuses
+            unsubscribers.push(onSnapshot(collection(db, ...base, 'relay_statuses'), (s) => {
+                state.statuses = {};
+                s.docs.forEach(d => {
+                    const dat = d.data();
+                    if(dat.relayId === state.activeRid) {
+                        if(!state.statuses[dat.dateKey]) state.statuses[dat.dateKey] = {};
+                        state.statuses[dat.dateKey][dat.userId] = dat.status;
+                    }
+                });
+                renderCal();
+                renderDay();
+            }));
+
+            // Notifications
+            const notifQ = query(collection(db, ...base, 'relay_notifications'), where('relayId', '==', state.activeRid));
+            unsubscribers.push(onSnapshot(notifQ, (s) => {
+                state.notifs = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.timestamp - a.timestamp);
+                renderNotifs();
+            }));
+        };
+
+        const refreshUI = () => {
+            if (state.currentRelay) {
+                document.getElementById('dash-relay-name').innerText = state.currentRelay.name;
+                document.getElementById('dash-relay-code').innerText = state.activeRid;
+            }
+            updateProfileUI();
+            renderCal();
+            renderDay();
+        };
+
+        const updateProfileUI = () => {
+            const me = state.profiles[state.user?.uid];
+            if(!me) return;
+            
+            document.getElementById('set-fname').value = me.firstName || '';
+            document.getElementById('set-lname').value = me.lastName || '';
+
+            const dashImg = document.getElementById('dash-avatar');
+            const dashIcon = document.getElementById('dash-avatar-icon');
+            const setImg = document.getElementById('set-avatar');
+            const setIcon = document.getElementById('set-avatar-icon');
+
+            if(me.photo) {
+                dashImg.src = me.photo;
+                dashImg.classList.remove('hidden');
+                dashIcon.classList.add('hidden');
+                setImg.src = me.photo;
+                setImg.classList.remove('hidden');
+                setIcon.classList.add('hidden');
+            } else {
+                dashImg.classList.add('hidden');
+                dashIcon.classList.remove('hidden');
+                setImg.classList.add('hidden');
+                setIcon.classList.remove('hidden');
+            }
+        };
+
+        const createNotif = async (msg, type = 'info') => {
+            if(!state.activeRid) return;
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'relay_notifications'), {
+                    relayId: state.activeRid,
+                    userId: state.user.uid,
+                    message: msg,
+                    type,
+                    timestamp: Date.now()
+                });
+            } catch(e) { console.error("Notif failed", e); }
+        };
+
+        const renderNotifs = () => {
+            const list = document.getElementById('notif-list');
+            const badge = document.getElementById('notif-badge');
+            
+            if (state.notifs.length === 0) {
+                list.innerHTML = `<div class="py-10 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">No Alerts</div>`;
+                badge.classList.remove('active');
+                return;
+            }
+
+            badge.innerText = state.notifs.length > 9 ? '9+' : state.notifs.length;
+            badge.classList.add('active');
+
+            list.innerHTML = state.notifs.map(n => {
+                const p = state.profiles[n.userId] || { firstName: 'Someone' };
+                return `
+                    <div class="premium-card p-4 flex gap-4 items-start">
+                        <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                            <i data-lucide="bell" class="w-4 h-4 text-indigo-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-[10px] font-bold text-slate-600 leading-tight">${p.firstName}: ${n.message}</p>
+                            <p class="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">${new Date(n.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        };
+
+        window.handleLogin = async () => {
+            const e = document.getElementById('login-email').value;
+            const p = document.getElementById('login-pass').value;
+            if(!e || !p) return showToast("Enter credentials");
+            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { window.showToast("Login Error"); }
+        };
+
+        window.handleSignup = async () => {
+            const f = document.getElementById('signup-f').value;
+            const e = document.getElementById('signup-e').value;
+            const p = document.getElementById('signup-p').value;
+            const img = document.getElementById('signup-avatar-preview').src;
+            if(!f || !e || p.length < 6) return window.showToast("Check input fields");
+            try {
+                const res = await createUserWithEmailAndPassword(auth, e, p);
+                // Force profile creation immediately
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', res.user.uid), {
+                    firstName: f, lastName: '', photo: img.startsWith('data:') ? img : '', email: e
+                });
+            } catch(err) { window.showToast("Signup Error"); }
+        };
+
+        window.handleLogout = () => signOut(auth);
+
+        window.saveProfile = async () => {
+            const setImg = document.getElementById('set-avatar').src;
+            const data = { 
+                firstName: document.getElementById('set-fname').value, 
+                lastName: document.getElementById('set-lname').value,
+                photo: setImg.startsWith('data:') ? setImg : (state.profiles[state.user.uid]?.photo || '')
+            };
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', state.user.uid), data);
+                window.showToast("Identity Updated");
+            } catch(e) { window.showToast("Save Error"); }
+        };
+
+        window.setStatus = async (s) => {
+            if(!state.selDate || !state.activeRid) return window.showToast("Select a date");
+            const docId = `${state.activeRid}_${state.user.uid}_${state.selDate}`;
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'relay_statuses', docId);
+            try {
+                if(!s) {
+                    await deleteDoc(ref);
+                    createNotif(`cleared availability for ${state.selDate}`);
+                } else {
+                    await setDoc(ref, { relayId: state.activeRid, userId: state.user.uid, dateKey: state.selDate, status: s });
+                    createNotif(`is now ${s} on ${state.selDate}`);
+                }
+            } catch(e) { window.showToast("Sync Error"); }
+        };
+
+        window.clearNotifs = async () => {
+            try {
+                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'relay_notifications'), where('relayId', '==', state.activeRid));
+                const snap = await getDocs(q);
+                const batch = snap.docs.map(d => deleteDoc(d.ref));
+                await Promise.all(batch);
+                window.showToast("Inbox Cleared");
+            } catch(e) { window.showToast("Cloud Error"); }
+        };
+
+        window.previewAvatar = (e, t) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = document.getElementById(t);
+                const icon = document.getElementById(t + '-icon');
+                img.src = ev.target.result;
+                img.classList.remove('hidden');
+                if(icon) icon.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.handleJoin = async () => {
+            const code = document.getElementById('join-code').value.trim().toUpperCase();
+            if(!code) return;
+            try {
+                const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relays', code));
+                if(!snap.exists()) return window.showToast("Invalid Code");
+                await setDoc(doc(db, 'artifacts', appId, 'users', state.user.uid, 'relays', code), { joined: true });
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relay_members', `${code}_${state.user.uid}`), { relayId: code, userId: state.user.uid });
+                state.activeRid = code; localStorage.setItem('RELAY_RID', code);
+                createNotif("joined the team!");
+                syncActiveRelay();
+                window.setScreen('screen-dash');
+            } catch(e) { window.showToast("Sync Error"); }
+        };
+
+        window.handleCreate = async () => {
+            const n = document.getElementById('new-name').value.trim() || 'New Relay';
+            const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relays', code), { creator: state.user.uid, name: n, createdAt: Date.now() });
+                await setDoc(doc(db, 'artifacts', appId, 'users', state.user.uid, 'relays', code), { joined: true });
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relay_members', `${code}_${state.user.uid}`), { relayId: code, userId: state.user.uid });
+                state.activeRid = code; localStorage.setItem('RELAY_RID', code);
+                syncActiveRelay();
+                window.setScreen('screen-dash');
+            } catch(e) { window.showToast("Create Failed"); }
+        };
+
+        const renderRelayList = () => {
+            const list = document.getElementById('setup-relay-list');
+            if(!list) return;
+            list.innerHTML = state.userRelays.map(c => `
+                <button onclick="switchRelay('${c}')" class="w-full bg-white border p-5 rounded-3xl text-left font-black text-[10px] uppercase tracking-widest flex justify-between items-center active:scale-95 transition-transform">
+                    <span>Relay ${c}</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                </button>
+            `).join('');
+            lucide.createIcons();
+        };
+
+        window.switchRelay = (c) => {
+            state.activeRid = c; localStorage.setItem('RELAY_RID', c);
+            syncActiveRelay();
+            window.setScreen('screen-dash');
+        };
+
+        const renderCal = () => {
+            const grid = document.getElementById('cal-grid');
+            if(!grid) return; grid.innerHTML = '';
+            const y = state.viewDate.getFullYear();
+            const m = state.viewDate.getMonth();
+            document.getElementById('cal-month').innerText = state.viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            const start = new Date(y, m, 1).getDay();
+            const days = new Date(y, m + 1, 0).getDate();
+            for(let i=0; i<start; i++) grid.appendChild(document.createElement('div'));
+            for(let i=1; i<=days; i++) {
+                const dk = `${y}-${m+1}-${i}`;
+                const dayStats = state.statuses[dk] || {};
+                const el = document.createElement('div');
+                let bg = dk === state.selDate ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-100';
+                el.className = `aspect-square rounded-xl border flex flex-col items-center justify-center cursor-pointer ${bg}`;
+                el.innerHTML = `<span class="text-[10px] font-black">${i}</span>`;
+                const dots = document.createElement('div'); dots.className = "flex gap-0.5 mt-1";
+                state.members.forEach(uid => {
+                    const s = dayStats[uid];
+                    if(s) {
+                        const d = document.createElement('div');
+                        d.className = `status-dot ${s==='free'?'bg-free':s==='shift'?'bg-shift':'bg-busy'}`;
+                        dots.appendChild(d);
+                    }
+                });
+                el.appendChild(dots);
+                el.onclick = () => { 
+                    state.selDate = dk; 
+                    document.getElementById('detail-date').innerText = new Date(y, m, i).toLocaleDateString('default', { weekday: 'long', month: 'short', day: 'numeric' });
+                    renderCal(); renderDay(); 
+                };
+                grid.appendChild(el);
+            }
+        };
+
+        const renderDay = () => {
+            const cont = document.getElementById('day-content');
+            const empty = document.getElementById('day-empty');
+            if(!state.selDate) { cont?.classList.add('hidden'); empty?.classList.remove('hidden'); return; }
+            cont?.classList.remove('hidden'); empty?.classList.add('hidden');
+
+            const list = document.getElementById('day-members');
+            if(!list) return;
+            list.innerHTML = '';
+            const dayStats = state.statuses[state.selDate] || {};
+            
+            state.members.forEach(uid => {
+                const p = state.profiles[uid] || { firstName: 'Syncing...' };
+                const s = dayStats[uid] || 'Not Set';
+                list.innerHTML += `
+                    <div class="flex items-center justify-between p-3 bg-white border border-slate-50 rounded-2xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-50 overflow-hidden border">
+                                ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-cover">` : `<i data-lucide="user" class="w-4 h-4 text-slate-300 m-2"></i>`}
+                            </div>
+                            <span class="text-[10px] font-black uppercase text-slate-700">${p.firstName}</span>
+                        </div>
+                        <span class="text-[8px] font-black uppercase px-2 py-1 rounded-lg ${s === 'free' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}">${s}</span>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        };
+
+        window.modMonth = (v) => { state.viewDate.setMonth(state.viewDate.getMonth()+v); renderCal(); };
+        window.toggleAuth = (m) => { document.getElementById('auth-login').classList.toggle('hidden', m==='signup'); document.getElementById('auth-signup').classList.toggle('hidden', m==='login'); };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) { 
+                state.user = user; 
+                startGlobalSync(user); 
+            } else { 
+                state.user = null; 
+                killSync(); 
+                window.setScreen('screen-auth'); 
+            }
+        });
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
