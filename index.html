@@ -95,7 +95,6 @@
     .bg-shift { color: #EF4444; }
     .bg-busy { color: #F59E0B; }
 
-    /* Half-available: left half green, right half grey */
     .status-dot.partial::before {
       background: linear-gradient(to right, #22C55E 0 50%, #E5E7EB 50% 100%);
     }
@@ -138,15 +137,64 @@
       from { transform: scale(0); }
       to   { transform: scale(1); }
     }
+
+    /* Welcome overlay animation */
+    @keyframes welcome-in {
+      0% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.96);
+      }
+      40% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-8px) scale(1.02);
+      }
+    }
+    .welcome-overlay {
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .welcome-overlay.show {
+      opacity: 1;
+    }
+    .welcome-card.animate-in {
+      animation: welcome-in 2.4s ease-in-out forwards;
+    }
   </style>
 </head>
 <body>
 
-<!-- Toast UI -->
 <div id="toast"
      class="fixed top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl opacity-0 pointer-events-none -translate-y-5 flex items-center gap-3 w-[85%] max-w-[400px] text-center justify-center">
   <i data-lucide="bell" class="w-4 h-4 text-indigo-400"></i>
   <span id="toast-msg">Notification</span>
+</div>
+
+<!-- Welcome overlay -->
+<div id="welcome-overlay"
+     class="welcome-overlay fixed inset-0 flex items-center justify-center z-[450]">
+  <div
+    id="welcome-card"
+    class="welcome-card max-w-[320px] w-[80%] bg-slate-900 text-white rounded-[2rem] px-7 py-6 shadow-2xl border border-slate-700/60 flex flex-col items-start gap-2">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-500/40">
+        <i data-lucide="zap" class="w-4 h-4 text-white"></i>
+      </div>
+      <p class="text-[9px] font-black uppercase tracking-[0.25em] text-slate-300">
+        Hello!
+      </p>
+    </div>
+    <p class="text-xl font-black tracking-tight leading-tight">
+      Welcome to Relay.
+    </p>
+    <p class="text-[10px] text-slate-300 font-medium mt-1">
+      Your team calendar is now live and synced.
+    </p>
+  </div>
 </div>
 
 <div class="app-container">
@@ -157,7 +205,7 @@
     <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Relay Cloud Sync</p>
   </div>
 
-  <!-- AUTH -->
+  <!-- AUTH SCREEN -->
   <section id="screen-auth" class="absolute inset-0 z-[400] bg-white flex flex-col px-8 pt-20 hidden">
     <div class="text-center mb-12">
       <div
@@ -222,7 +270,7 @@
     </div>
   </section>
 
-  <!-- SETUP -->
+  <!-- SETUP SCREEN -->
   <section id="screen-setup" class="absolute inset-0 z-[300] bg-white flex flex-col px-8 pt-20 hidden">
     <div class="text-center mb-10">
       <h2 class="text-3xl font-black text-slate-900 tracking-tight italic uppercase">Relays</h2>
@@ -259,8 +307,9 @@
     </div>
   </section>
 
-  <!-- DASHBOARD -->
+  <!-- DASHBOARD SCREEN -->
   <section id="screen-dash" class="absolute inset-0 flex flex-col hidden">
+    <!-- Header -->
     <header class="bg-white px-6 pt-12 pb-5 flex flex-col border-b border-slate-50 shrink-0">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-4">
@@ -305,6 +354,7 @@
     </header>
 
     <main class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-40">
+      <!-- CALENDAR VIEW SECTION -->
       <div id="view-calendar" class="space-y-6">
         <section class="premium-card p-6">
           <div class="flex items-center justify-between mb-6">
@@ -466,6 +516,7 @@
         </section>
       </div>
 
+      <!-- AGENDA VIEW SECTION -->
       <div id="view-agenda" class="hidden space-y-4">
         <div id="agenda-empty"
              class="flex flex-col items-center justify-center py-20 text-slate-300">
@@ -476,6 +527,7 @@
       </div>
     </main>
 
+    <!-- Bottom Availability Bar -->
     <div id="footer-availability"
          class="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto p-6 pb-10 pointer-events-none">
       <div
@@ -519,6 +571,7 @@
     </div>
   </section>
 
+  <!-- NOTIFICATIONS MODAL -->
   <section id="modal-notifications"
            class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
     <header
@@ -540,6 +593,7 @@
     </div>
   </section>
 
+  <!-- SETTINGS MODAL -->
   <section id="modal-settings"
            class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
     <header
@@ -654,6 +708,7 @@
     </div>
   </section>
 
+  <!-- PARTIAL UNAVAILABILITY MODAL -->
   <section id="modal-unavail"
            class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
     <header
@@ -676,7 +731,8 @@
         Date
       </p>
 
-      <div id="unavail-slot-list" class="space-y-3"></div>
+      <div id="unavail-slot-list" class="space-y-3">
+      </div>
 
       <button onclick="addUnavailSlotRow()"
               class="w-full bg-slate-900 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 active:scale-95">
@@ -691,6 +747,7 @@
     </div>
   </section>
 
+  <!-- SUGGESTIONS MODAL -->
   <section id="modal-suggest"
            class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
     <header
@@ -832,10 +889,25 @@ const overlaps = (planFrom, planTo, slots = []) => {
   });
 };
 
+/* Welcome animation trigger */
+const playWelcome = () => {
+  const overlay = document.getElementById("welcome-overlay");
+  const card = document.getElementById("welcome-card");
+  if (!overlay || !card) return;
+  overlay.classList.add("show");
+  card.classList.remove("animate-in");
+  void card.offsetWidth;
+  card.classList.add("animate-in");
+  setTimeout(() => {
+    overlay.classList.remove("show");
+  }, 2500);
+};
+
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentU = user;
     initGlobalSync();
+    playWelcome();
   } else {
     currentU = null;
     stopSync();
@@ -1506,12 +1578,21 @@ const respondToPlan = async (dateKey, type) => {
     else rejected.push(currentU.uid);
 
     const memberCount = members.length || 1;
-    const newStatus =
-      rejected.length > 0
-        ? "rejected"
-        : accepted.length >= memberCount
-        ? "confirmed"
-        : "pending";
+
+    let newStatus = "pending";
+    if (rejected.length > 0) {
+      newStatus = "rejected";
+    } else if (accepted.length >= memberCount) {
+      newStatus = "confirmed";
+    } else if (accepted.length >= Math.ceil(memberCount / 2)) {
+      const dayStats = statuses[dateKey] || {};
+      const nonAccepting = members.filter((uid) => !accepted.includes(uid));
+      const hasBusyNonAcceptor = nonAccepting.some((uid) => {
+        const s = dayStats[uid];
+        return s === "shift" || s === "unavail";
+      });
+      newStatus = hasBusyNonAcceptor ? "override" : "pending";
+    }
 
     tx.update(ref, {
       acceptedBy: accepted,
@@ -1537,12 +1618,21 @@ const withdrawResponse = async (dateKey) => {
     const plan = snap.data();
     const accepted = (plan.acceptedBy || []).filter((u) => u !== currentU.uid);
     const rejected = (plan.rejectedBy || []).filter((u) => u !== currentU.uid);
-    const newStatus =
-      rejected.length > 0
-        ? "rejected"
-        : accepted.length >= (members.length || 1)
-        ? "confirmed"
-        : "pending";
+    const memberCount = members.length || 1;
+    let newStatus = "pending";
+    if (rejected.length > 0) {
+      newStatus = "rejected";
+    } else if (accepted.length >= memberCount) {
+      newStatus = "confirmed";
+    } else if (accepted.length >= Math.ceil(memberCount / 2)) {
+      const dayStats = statuses[dateKey] || {};
+      const nonAccepting = members.filter((uid) => !accepted.includes(uid));
+      const hasBusyNonAcceptor = nonAccepting.some((uid) => {
+        const s = dayStats[uid];
+        return s === "shift" || s === "unavail";
+      });
+      newStatus = hasBusyNonAcceptor ? "override" : "pending";
+    }
     tx.update(ref, {
       acceptedBy: accepted,
       rejectedBy: rejected,
@@ -1902,11 +1992,6 @@ window.renderDay = () => {
       plan && overlaps(plan.timeStart, plan.timeEnd, personalSlots);
     if (partialConflict) anyPartialConflict = true;
 
-    const slotsLabel = personalSlots.length
-      ? "Unavailable " +
-        personalSlots.map((sl) => `${sl.from}–${sl.to}`).join(", ")
-      : "";
-
     let icon = '<div class="w-2 h-2 rounded-full bg-slate-200"></div>';
     if (plan) {
       if (plan.acceptedBy?.includes(uid))
@@ -1930,28 +2015,21 @@ window.renderDay = () => {
           </span>
         </div>
         <div class="flex items-center gap-3">
-          <div class="flex flex-col items-end gap-0.5">
-            <div class="text-[8px] font-black uppercase px-2 py-0.5 rounded-lg ${
-              partialConflict
-                ? "bg-amber-100 text-amber-700"
-                : s === "free"
-                ? "bg-emerald-50 text-emerald-600"
-                : s === "shift"
-                ? "bg-red-50 text-red-600"
-                : s === "unavail"
-                ? "bg-amber-50 text-amber-600"
-                : "bg-slate-50 text-slate-400"
-            }">
-              ${
-                partialConflict
-                  ? "Time Conflict"
-                  : (s || "Not Set")
-              }
-            </div>
+          <div class="text-[8px] font-black uppercase px-2 py-0.5 rounded-lg ${
+            partialConflict
+              ? "bg-amber-100 text-amber-700"
+              : s === "free"
+              ? "bg-emerald-50 text-emerald-600"
+              : s === "shift"
+              ? "bg-red-50 text-red-600"
+              : s === "unavail"
+              ? "bg-amber-50 text-amber-600"
+              : "bg-slate-50 text-slate-400"
+          }">
             ${
-              slotsLabel
-                ? `<div class="text-[8px] text-slate-400 font-bold">${slotsLabel}</div>`
-                : ""
+              partialConflict
+                ? "Time Conflict"
+                : s || "Not Set"
             }
           </div>
           ${icon}
@@ -2002,18 +2080,30 @@ window.renderDay = () => {
       document.getElementById("plan-address").value = plan.address || "";
       document.getElementById("plan-time-start").value = plan.timeStart || "";
       document.getElementById("plan-time-end").value = plan.timeEnd || "";
-
       ["plan-location", "plan-address", "plan-time-start", "plan-time-end"].forEach(
         (id) => {
           document.getElementById(id).readOnly = !isOrg;
         }
       );
     } else {
-      badge.innerText = plan.status === "rejected" ? "Vetoed" : "Awaiting All";
-      badge.className = `text-[9px] font-black uppercase tracking-widest ${
-        plan.status === "rejected" ? "bg-rose-500" : "bg-indigo-600"
-      } text-white px-3 py-1 rounded-full w-max mb-1`;
-      planUI.classList.toggle("pulse-plan", plan.status === "pending");
+      if (plan.status === "rejected") {
+        badge.innerText = "Vetoed";
+        badge.className =
+          "text-[9px] font-black uppercase tracking-widest bg-rose-500 text-white px-3 py-1 rounded-full w-max mb-1";
+      } else if (plan.status === "override") {
+        badge.innerText = "Override Plan";
+        badge.className =
+          "text-[9px] font-black uppercase tracking-widest bg-amber-500 text-white px-3 py-1 rounded-full w-max mb-1";
+      } else {
+        badge.innerText = "Awaiting All";
+        badge.className =
+          "text-[9px] font-black uppercase tracking-widest bg-indigo-600 text-white px-3 py-1 rounded-full w-max mb-1";
+      }
+
+      planUI.classList.toggle(
+        "pulse-plan",
+        plan.status === "pending" || plan.status === "override"
+      );
       document.getElementById("plan-actions").classList.remove("hidden");
       detailFields.classList.add("hidden");
     }
@@ -2026,13 +2116,16 @@ window.renderDay = () => {
   } else {
     planUI.classList.add("hidden");
     btnProp.classList.remove("hidden");
-    btnProp.disabled = blocks;
+    btnProp.disabled = false;
     btnProp.innerHTML = blocks
-      ? `<i data-lucide="lock" class="w-4 h-4"></i> Availability Conflict`
+      ? `<i data-lucide="alert-triangle" class="w-4 h-4"></i> Propose Override Plan`
       : `<i data-lucide="send" class="w-4 h-4 -rotate-45"></i> Propose Plan`;
-    btnProp.className = blocks
-      ? "w-full bg-slate-100 text-slate-300 py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed flex items-center justify-center gap-2"
-      : "w-full bg-indigo-600 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95";
+    btnProp.className =
+      "w-full " +
+      (blocks
+        ? "bg-amber-500 text-white"
+        : "bg-indigo-600 text-white") +
+      " py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95";
   }
   lucide.createIcons();
 };
@@ -2054,6 +2147,7 @@ window.renderAgenda = () => {
       const p = plans[dk];
       const d = fromKey(dk);
       const isConfirmed = p.status === "confirmed";
+      const isOverride = p.status === "override";
       const dateLabel = d.toLocaleDateString("default", {
         weekday: "long",
         month: "short",
@@ -2117,9 +2211,19 @@ window.renderAgenda = () => {
               </h4>
             </div>
             <span class="text-[8px] font-black uppercase px-2.5 py-1 rounded-full ${
-              isConfirmed ? "bg-emerald-100 text-emerald-600" : "bg-indigo-100 text-indigo-600"
+              isConfirmed
+                ? "bg-emerald-100 text-emerald-600"
+                : isOverride
+                ? "bg-amber-100 text-amber-700"
+                : "bg-indigo-100 text-indigo-600"
             }">
-              ${isConfirmed ? "Confirmed" : "Awaiting All"}
+              ${
+                isConfirmed
+                  ? "Confirmed"
+                  : isOverride
+                  ? "Override"
+                  : "Awaiting All"
+              }
             </span>
           </div>
           ${metaBlock}
@@ -2147,7 +2251,6 @@ window.renderCal = () => {
     const dk = toKey(new Date(y, m, i));
     const dayStats = statuses[dk] || {};
     const plan = plans[dk];
-    const dayUnavail = unavailabilities[dk] || {};
     let hasBlocker = false;
     let freeCount = 0;
     members.forEach((uid) => {
@@ -2157,12 +2260,15 @@ window.renderCal = () => {
 
     const el = document.createElement("div");
     let bg = "bg-white border-slate-100 text-slate-700";
-    if (plan && plan.status === "confirmed")
+    if (plan && plan.status === "confirmed") {
       bg = "bg-indigo-600 text-white border-indigo-700 shadow-lg";
-    else if (hasBlocker)
+    } else if (plan && plan.status === "override") {
+      bg = "bg-amber-500 text-white border-amber-600 shadow-lg";
+    } else if (hasBlocker) {
       bg = "bg-slate-50 border-slate-100 text-slate-300";
-    else if (freeCount === members.length && members.length > 0)
+    } else if (freeCount === members.length && members.length > 0) {
       bg = "bg-emerald-50 border-emerald-100 text-emerald-700";
+    }
     if (dk === selDate) bg += " selected-day";
     el.className =
       "calendar-day aspect-square rounded-2xl border flex flex-col items-center justify-center cursor-pointer overflow-hidden " +
@@ -2173,14 +2279,11 @@ window.renderCal = () => {
     dots.className = "flex gap-0.5 mt-1";
     members.forEach((uid) => {
       const s = dayStats[uid];
-      const slots = dayUnavail[uid] || [];
-      const hasPartial = Array.isArray(slots) && slots.length > 0;
       if (s) {
         const d = document.createElement("div");
-        d.className =
-          "status-dot " +
-          (hasPartial ? "partial " : "") +
-          (s === "free" ? "bg-free" : s === "shift" ? "bg-shift" : "bg-busy");
+        d.className = `status-dot ${
+          s === "free" ? "bg-free" : s === "shift" ? "bg-shift" : "bg-busy"
+        }`;
         dots.appendChild(d);
       }
     });
@@ -2190,7 +2293,11 @@ window.renderCal = () => {
       const bar = document.createElement("div");
       bar.className =
         "absolute bottom-0 left-0 right-0 h-1 " +
-        (plan.status === "rejected" ? "bg-rose-400" : "bg-indigo-400");
+        (plan.status === "rejected"
+          ? "bg-rose-400"
+          : plan.status === "override"
+          ? "bg-amber-400"
+          : "bg-indigo-400");
       el.appendChild(bar);
     }
     el.onclick = () => {
