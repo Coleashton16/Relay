@@ -872,8 +872,10 @@
     }
 
     function handleError(error) {
-      console.error(error);
-      showToast(error?.message || 'Something went wrong');
+      const code = error?.code ? ` (${error.code})` : '';
+      const message = error?.message || 'Something went wrong';
+      console.error('Relay app error:', { code: error?.code || null, message, raw: error });
+      showToast(`${message}${code}`);
     }
 
     attachEvents();
