@@ -95,8 +95,9 @@
     .bg-shift { color: #EF4444; }
     .bg-busy { color: #F59E0B; }
 
+    /* half/partial indicator when user has time slots */
     .status-dot.partial::before {
-      background: linear-gradient(to right, #22C55E 0 50%, #E5E7EB 50% 100%);
+      background: linear-gradient(to right, currentColor 0 50%, #E5E7EB 50% 100%);
     }
 
     .tab-btn { position: relative; transition: color 0.2s; }
@@ -512,6 +513,16 @@
               </h4>
               <div id="day-members" class="space-y-2"></div>
             </div>
+
+            <!-- Per-user unavailability summary -->
+            <div id="day-unavail-summary" class="mt-3 border-t border-slate-100 pt-3 hidden">
+              <p class="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2 flex items-center gap-1.5">
+                <i data-lucide="clock-off" class="w-3 h-3"></i>
+                Unavailability Windows
+              </p>
+              <div id="day-unavail-list" class="space-y-1"></div>
+            </div>
+
           </div>
         </section>
       </div>
@@ -2037,6 +2048,33 @@ window.renderDay = () => {
       </div>`;
   });
 
+  // per-user unavailability summary
+  const summaryBlock = document.getElementById("day-unavail-summary");
+  const summaryList = document.getElementById("day-unavail-list");
+  summaryList.innerHTML = "";
+  const usersWithSlots = members.filter(
+    (uid) => (dayUnavail[uid] || []).length > 0
+  );
+  if (usersWithSlots.length) {
+    summaryBlock.classList.remove("hidden");
+    usersWithSlots.forEach((uid) => {
+      const p = profiles[uid] || { firstName: "User" };
+      const slots = dayUnavail[uid] || [];
+      const label =
+        p.firstName + (uid === currentU.uid ? " (You)" : "");
+      const times = slots
+        .map((s) => `${s.from} – ${s.to}`)
+        .join(" • ");
+      summaryList.innerHTML += `
+        <div class="flex items-center justify-between text-[9px] text-slate-600 bg-slate-50 rounded-2xl px-3 py-1.5">
+          <span class="font-black uppercase tracking-widest">${label}</span>
+          <span class="font-bold">${times}</span>
+        </div>`;
+    });
+  } else {
+    summaryBlock.classList.add("hidden");
+  }
+
   const btnProp = document.getElementById("btn-propose");
   const planUI = document.getElementById("plan-ui");
   const detailFields = document.getElementById("plan-confirmed-details");
@@ -2251,6 +2289,7 @@ window.renderCal = () => {
     const dk = toKey(new Date(y, m, i));
     const dayStats = statuses[dk] || {};
     const plan = plans[dk];
+    const dayUnavail = unavailabilities[dk] || {};
     let hasBlocker = false;
     let freeCount = 0;
     members.forEach((uid) => {
@@ -2279,10 +2318,20 @@ window.renderCal = () => {
     dots.className = "flex gap-0.5 mt-1";
     members.forEach((uid) => {
       const s = dayStats[uid];
-      if (s) {
+      const slots = dayUnavail[uid] || [];
+      if (s || slots.length) {
         const d = document.createElement("div");
-        d.className = `status-dot ${
-          s === "free" ? "bg-free" : s === "shift" ? "bg-shift" : "bg-busy"
+        const hasSlots = slots.length > 0;
+        const baseClass =
+          s === "free"
+            ? "bg-free"
+            : s === "shift"
+            ? "bg-shift"
+            : s === "unavail"
+            ? "bg-busy"
+            : "bg-busy";
+        d.className = `status-dot ${baseClass} ${
+          hasSlots ? "partial" : ""
         }`;
         dots.appendChild(d);
       }
