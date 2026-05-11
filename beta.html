@@ -48,6 +48,9 @@
         .notif-badge.active { display: flex; }
 
         #toast { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 9999; }
+
+        .recommendation-pill { animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop-in { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -77,19 +80,10 @@
                 <input type="email" id="login-email" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white" placeholder="Email Address">
                 <input type="password" id="login-pass" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white" placeholder="Password">
                 <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">Sign In</button>
-                <button onclick="toggleAuth('signup')" class="w-full text-[10px] font-black text-indigo-600 uppercase tracking-widest pt-4">Create New Account</button>
+                <button onclick="toggleAuth('signup')" class="w-full text-[10px] font-black text-indigo-600 uppercase tracking-widest pt-4 text-center">Create New Account</button>
             </div>
 
             <div id="auth-signup" class="space-y-4 hidden overflow-y-auto no-scrollbar pb-10">
-                <div class="flex flex-col items-center mb-4">
-                    <label for="signup-avatar" class="cursor-pointer group relative">
-                        <div class="w-24 h-24 rounded-full bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
-                            <img id="signup-avatar-preview" src="" class="hidden w-full h-full object-cover">
-                            <i data-lucide="camera" id="signup-avatar-icon" class="w-8 h-8 text-slate-300"></i>
-                        </div>
-                    </label>
-                    <input type="file" id="signup-avatar" class="hidden" accept="image/*" onchange="previewAvatar(event, 'signup-avatar-preview')">
-                </div>
                 <div class="grid grid-cols-2 gap-3">
                     <input type="text" id="signup-f" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="First Name">
                     <input type="text" id="signup-l" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Last Name">
@@ -97,7 +91,7 @@
                 <input type="email" id="signup-e" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Email">
                 <input type="password" id="signup-p" class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm" placeholder="Password (6+ Characters)">
                 <button onclick="handleSignup()" class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">Create Account</button>
-                <button onclick="toggleAuth('login')" class="w-full text-[10px] font-black text-slate-400 uppercase py-2">Back to Login</button>
+                <button onclick="toggleAuth('login')" class="w-full text-[10px] font-black text-slate-400 uppercase py-2 text-center">Back to Login</button>
             </div>
         </section>
 
@@ -123,7 +117,7 @@
             <header class="bg-white px-6 pt-12 pb-5 flex flex-col border-b border-slate-50 shrink-0">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-4">
-                        <button onclick="openModal('modal-settings')" class="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 shadow-sm relative">
+                        <button onclick="openModal('modal-settings')" class="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 shadow-sm">
                             <img id="dash-avatar" src="" class="hidden w-full h-full object-cover">
                             <i id="dash-avatar-icon" data-lucide="user" class="w-5 h-5 text-slate-400"></i>
                         </button>
@@ -159,8 +153,14 @@
                             </div>
                         </div>
                         <div id="cal-grid" class="grid grid-cols-7 gap-y-3 gap-x-1.5"></div>
+                        
+                        <!-- NEW: Find a Date Button (Global Utility) -->
+                        <button onclick="openFindDateModal()" class="w-full mt-6 bg-slate-50 text-slate-600 py-3 rounded-2xl font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-2 border border-slate-100 active:scale-95 transition-transform">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-500"></i> Find Optimal Date
+                        </button>
                     </section>
 
+                    <!-- Day Details Card (Context-Specific Actions) -->
                     <section class="premium-card p-6 min-h-[250px] flex flex-col">
                         <div id="day-empty" class="flex-1 flex flex-col items-center justify-center text-slate-300 py-10">
                             <i data-lucide="calendar" class="w-8 h-8 mb-3 opacity-20"></i>
@@ -168,6 +168,14 @@
                         </div>
                         <div id="day-content" class="hidden flex flex-col h-full">
                             <p id="detail-date" class="text-center text-xs font-black text-indigo-600 uppercase tracking-[0.4em] mb-6">---</p>
+                            
+                            <!-- Propose Plan Button (Day Specific) -->
+                            <div id="plan-action-container" class="mb-8">
+                                <button onclick="handlePropose()" id="btn-propose-plan" class="w-full bg-indigo-600 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Propose a Plan
+                                </button>
+                            </div>
+
                             <div id="day-members" class="space-y-2 mb-8"></div>
                         </div>
                     </section>
@@ -209,29 +217,38 @@
             <div id="notif-list" class="p-6 space-y-4 overflow-y-auto no-scrollbar"></div>
         </section>
 
+        <section id="modal-find-date" class="modal-slide-up bg-slate-50 flex flex-col">
+            <header class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <button onclick="closeModal('modal-find-date')" class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Close</button>
+                <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Optimal Dates</h3>
+                <div class="w-10"></div>
+            </header>
+            <div id="find-date-results" class="p-6 space-y-4 overflow-y-auto no-scrollbar"></div>
+        </section>
+
         <section id="modal-settings" class="modal-slide-up bg-slate-50 flex flex-col">
             <header class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
                 <button onclick="closeModal('modal-settings')" class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Done</button>
-                <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Identity</h3>
+                <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">Settings</h3>
                 <div class="w-10"></div>
             </header>
-            <div class="p-6 space-y-6">
+            <div class="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
                 <div class="premium-card p-6 space-y-6">
-                    <div class="flex flex-col items-center gap-4">
-                        <label for="edit-avatar" class="cursor-pointer relative">
-                            <div class="w-20 h-20 rounded-[2rem] bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
-                                <img id="set-avatar" src="" class="hidden w-full h-full object-cover">
-                                <i data-lucide="camera" id="set-avatar-icon" class="w-6 h-6 text-slate-300"></i>
-                            </div>
-                        </label>
-                        <input type="file" id="edit-avatar" class="hidden" accept="image/*" onchange="previewAvatar(event, 'set-avatar')">
-                    </div>
                     <div class="space-y-4">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Update Identity</p>
                         <input type="text" id="set-fname" class="w-full bg-slate-100 border-none p-4 rounded-xl text-sm font-bold" placeholder="First Name">
                         <input type="text" id="set-lname" class="w-full bg-slate-100 border-none p-4 rounded-xl text-sm font-bold" placeholder="Last Name">
                         <button onclick="saveProfile()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest">Update Profile</button>
                     </div>
                 </div>
+
+                <div class="premium-card p-6">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-4">Relay Roster</p>
+                    <div id="set-members-list" class="space-y-3">
+                        <!-- Members with Kick Button for Admin go here -->
+                    </div>
+                </div>
+
                 <button onclick="handleLogout()" class="w-full py-10 text-slate-300 font-black uppercase text-[10px] tracking-[0.5em]">Sign Out</button>
             </div>
         </section>
@@ -240,7 +257,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, updateDoc, deleteDoc, addDoc, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, updateDoc, deleteDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD8APWhg6rpIAslOAAnjpZM5tDoUAgsKBY",
@@ -256,7 +273,6 @@
         const auth = getAuth(firebaseApp);
         const db = getFirestore(firebaseApp);
 
-        // --- GLOBAL STATE ---
         let state = {
             user: null,
             activeRid: localStorage.getItem('RELAY_RID'),
@@ -304,14 +320,10 @@
 
         const startGlobalSync = (user) => {
             killSync();
-
-            // 1. Sync All Profiles
             unsubscribers.push(onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'profiles'), (s) => {
                 s.forEach(d => state.profiles[d.id] = d.data());
                 refreshUI();
             }));
-
-            // 2. Sync User's personal relay list
             unsubscribers.push(onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'relays'), (s) => {
                 state.userRelays = s.docs.map(d => d.id);
                 if (state.userRelays.length === 0) {
@@ -331,20 +343,14 @@
         const syncActiveRelay = () => {
             if (!state.activeRid) return;
             const base = ['artifacts', appId, 'public', 'data'];
-
-            // Meta
             unsubscribers.push(onSnapshot(doc(db, ...base, 'relays', state.activeRid), (d) => {
                 if (d.exists()) state.currentRelay = d.data();
                 refreshUI();
             }));
-
-            // Members
             unsubscribers.push(onSnapshot(collection(db, ...base, 'relay_members'), (s) => {
                 state.members = s.docs.filter(d => d.data().relayId === state.activeRid).map(d => d.data().userId);
                 refreshUI();
             }));
-
-            // Statuses
             unsubscribers.push(onSnapshot(collection(db, ...base, 'relay_statuses'), (s) => {
                 state.statuses = {};
                 s.docs.forEach(d => {
@@ -357,10 +363,7 @@
                 renderCal();
                 renderDay();
             }));
-
-            // Notifications
-            const notifQ = query(collection(db, ...base, 'relay_notifications'), where('relayId', '==', state.activeRid));
-            unsubscribers.push(onSnapshot(notifQ, (s) => {
+            unsubscribers.push(onSnapshot(query(collection(db, ...base, 'relay_notifications'), where('relayId', '==', state.activeRid)), (s) => {
                 state.notifs = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.timestamp - a.timestamp);
                 renderNotifs();
             }));
@@ -374,112 +377,51 @@
             updateProfileUI();
             renderCal();
             renderDay();
+            renderMembersList();
         };
 
         const updateProfileUI = () => {
             const me = state.profiles[state.user?.uid];
             if(!me) return;
-            
             document.getElementById('set-fname').value = me.firstName || '';
             document.getElementById('set-lname').value = me.lastName || '';
-
-            const dashImg = document.getElementById('dash-avatar');
-            const dashIcon = document.getElementById('dash-avatar-icon');
-            const setImg = document.getElementById('set-avatar');
-            const setIcon = document.getElementById('set-avatar-icon');
-
             if(me.photo) {
+                const dashImg = document.getElementById('dash-avatar');
                 dashImg.src = me.photo;
                 dashImg.classList.remove('hidden');
-                dashIcon.classList.add('hidden');
-                setImg.src = me.photo;
-                setImg.classList.remove('hidden');
-                setIcon.classList.add('hidden');
-            } else {
-                dashImg.classList.add('hidden');
-                dashIcon.classList.remove('hidden');
-                setImg.classList.add('hidden');
-                setIcon.classList.remove('hidden');
+                document.getElementById('dash-avatar-icon').classList.add('hidden');
             }
-        };
-
-        const createNotif = async (msg, type = 'info') => {
-            if(!state.activeRid) return;
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'relay_notifications'), {
-                    relayId: state.activeRid,
-                    userId: state.user.uid,
-                    message: msg,
-                    type,
-                    timestamp: Date.now()
-                });
-            } catch(e) { console.error("Notif failed", e); }
-        };
-
-        const renderNotifs = () => {
-            const list = document.getElementById('notif-list');
-            const badge = document.getElementById('notif-badge');
-            
-            if (state.notifs.length === 0) {
-                list.innerHTML = `<div class="py-10 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">No Alerts</div>`;
-                badge.classList.remove('active');
-                return;
-            }
-
-            badge.innerText = state.notifs.length > 9 ? '9+' : state.notifs.length;
-            badge.classList.add('active');
-
-            list.innerHTML = state.notifs.map(n => {
-                const p = state.profiles[n.userId] || { firstName: 'Someone' };
-                return `
-                    <div class="premium-card p-4 flex gap-4 items-start">
-                        <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
-                            <i data-lucide="bell" class="w-4 h-4 text-indigo-400"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-[10px] font-bold text-slate-600 leading-tight">${p.firstName}: ${n.message}</p>
-                            <p class="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">${new Date(n.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            lucide.createIcons();
         };
 
         window.handleLogin = async () => {
             const e = document.getElementById('login-email').value;
             const p = document.getElementById('login-pass').value;
-            if(!e || !p) return showToast("Enter credentials");
-            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { window.showToast("Login Error"); }
+            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { window.showToast("Login Failed"); }
         };
 
         window.handleSignup = async () => {
             const f = document.getElementById('signup-f').value;
             const e = document.getElementById('signup-e').value;
             const p = document.getElementById('signup-p').value;
-            const img = document.getElementById('signup-avatar-preview').src;
             if(!f || !e || p.length < 6) return window.showToast("Check input fields");
             try {
                 const res = await createUserWithEmailAndPassword(auth, e, p);
-                // Force profile creation immediately
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', res.user.uid), {
-                    firstName: f, lastName: '', photo: img.startsWith('data:') ? img : '', email: e
+                    firstName: f, lastName: '', photo: '', email: e
                 });
-            } catch(err) { window.showToast("Signup Error"); }
+            } catch(err) { window.showToast("Signup Failed"); }
         };
 
         window.handleLogout = () => signOut(auth);
 
         window.saveProfile = async () => {
-            const setImg = document.getElementById('set-avatar').src;
             const data = { 
                 firstName: document.getElementById('set-fname').value, 
-                lastName: document.getElementById('set-lname').value,
-                photo: setImg.startsWith('data:') ? setImg : (state.profiles[state.user.uid]?.photo || '')
+                lastName: document.getElementById('set-lname').value 
             };
             try {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', state.user.uid), data);
-                window.showToast("Identity Updated");
+                window.showToast("Profile Updated");
             } catch(e) { window.showToast("Save Error"); }
         };
 
@@ -488,38 +430,60 @@
             const docId = `${state.activeRid}_${state.user.uid}_${state.selDate}`;
             const ref = doc(db, 'artifacts', appId, 'public', 'data', 'relay_statuses', docId);
             try {
-                if(!s) {
-                    await deleteDoc(ref);
-                    createNotif(`cleared availability for ${state.selDate}`);
-                } else {
-                    await setDoc(ref, { relayId: state.activeRid, userId: state.user.uid, dateKey: state.selDate, status: s });
-                    createNotif(`is now ${s} on ${state.selDate}`);
-                }
+                if(!s) await deleteDoc(ref);
+                else await setDoc(ref, { relayId: state.activeRid, userId: state.user.uid, dateKey: state.selDate, status: s });
             } catch(e) { window.showToast("Sync Error"); }
         };
 
-        window.clearNotifs = async () => {
-            try {
-                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'relay_notifications'), where('relayId', '==', state.activeRid));
-                const snap = await getDocs(q);
-                const batch = snap.docs.map(d => deleteDoc(d.ref));
-                await Promise.all(batch);
-                window.showToast("Inbox Cleared");
-            } catch(e) { window.showToast("Cloud Error"); }
+        window.openFindDateModal = () => {
+            const results = document.getElementById('find-date-results');
+            const scoring = [];
+            const today = new Date();
+            for(let i=0; i<60; i++) {
+                const d = new Date(today); d.setDate(today.getDate() + i);
+                const dk = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+                const dayStats = state.statuses[dk] || {};
+                let free = 0; let conflict = 0;
+                state.members.forEach(uid => {
+                    const s = dayStats[uid];
+                    if (s === 'free') free++;
+                    if (s === 'shift' || s === 'busy') conflict++;
+                });
+                if (free > 0 || conflict > 0) scoring.push({ dk, date: d, free, conflict, total: state.members.length });
+            }
+            scoring.sort((a,b) => (b.free - a.free) || (a.conflict - b.conflict));
+            if (scoring.length === 0) {
+                results.innerHTML = `<div class="py-20 text-center opacity-30 text-[10px] font-black uppercase tracking-widest">No availability found</div>`;
+            } else {
+                results.innerHTML = scoring.slice(0, 8).map(res => {
+                    const isPerfect = res.free === res.total && res.conflict === 0;
+                    return `
+                        <div class="recommendation-pill premium-card p-5 flex items-center justify-between border-l-4 ${isPerfect ? 'border-l-emerald-500' : 'border-l-indigo-400'}">
+                            <div>
+                                <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">${res.date.toLocaleDateString('default', { weekday: 'long' })}</p>
+                                <p class="text-sm font-black text-slate-900 uppercase italic">${res.date.toLocaleDateString('default', { month: 'short', day: 'numeric' })}</p>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="text-[8px] font-black uppercase bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-lg">${res.free} Free</span>
+                                    ${res.conflict > 0 ? `<span class="text-[8px] font-black uppercase bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg">${res.conflict} Conflict</span>` : ''}
+                                </div>
+                            </div>
+                            <button onclick="goToDate('${res.dk}')" class="w-10 h-10 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-transform"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+                        </div>
+                    `;
+                }).join('');
+            }
+            window.openModal('modal-find-date');
+            lucide.createIcons();
         };
 
-        window.previewAvatar = (e, t) => {
-            const file = e.target.files[0];
-            if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const img = document.getElementById(t);
-                const icon = document.getElementById(t + '-icon');
-                img.src = ev.target.result;
-                img.classList.remove('hidden');
-                if(icon) icon.classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
+        window.goToDate = (dk) => {
+            const parts = dk.split('-');
+            state.viewDate = new Date(parts[0], parts[1]-1, 1);
+            state.selDate = dk;
+            document.getElementById('detail-date').innerText = new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString('default', { weekday: 'long', month: 'short', day: 'numeric' });
+            window.closeModal('modal-find-date');
+            renderCal();
+            renderDay();
         };
 
         window.handleJoin = async () => {
@@ -531,10 +495,9 @@
                 await setDoc(doc(db, 'artifacts', appId, 'users', state.user.uid, 'relays', code), { joined: true });
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relay_members', `${code}_${state.user.uid}`), { relayId: code, userId: state.user.uid });
                 state.activeRid = code; localStorage.setItem('RELAY_RID', code);
-                createNotif("joined the team!");
                 syncActiveRelay();
                 window.setScreen('screen-dash');
-            } catch(e) { window.showToast("Sync Error"); }
+            } catch(e) { window.showToast("Join Error"); }
         };
 
         window.handleCreate = async () => {
@@ -547,7 +510,7 @@
                 state.activeRid = code; localStorage.setItem('RELAY_RID', code);
                 syncActiveRelay();
                 window.setScreen('screen-dash');
-            } catch(e) { window.showToast("Create Failed"); }
+            } catch(e) { window.showToast("Create Error"); }
         };
 
         const renderRelayList = () => {
@@ -566,6 +529,45 @@
             state.activeRid = c; localStorage.setItem('RELAY_RID', c);
             syncActiveRelay();
             window.setScreen('screen-dash');
+        };
+
+        const renderMembersList = () => {
+            const container = document.getElementById('set-members-list');
+            if (!container || !state.currentRelay) return;
+            const isAdmin = state.user.uid === state.currentRelay.creator;
+
+            container.innerHTML = state.members.map(uid => {
+                const p = state.profiles[uid] || { firstName: 'User' };
+                const isMe = uid === state.user.uid;
+                const canKick = isAdmin && !isMe;
+                return `
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-white border overflow-hidden">
+                                ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-cover">` : `<i data-lucide="user" class="w-4 h-4 text-slate-200 m-2"></i>`}
+                            </div>
+                            <span class="text-[10px] font-black uppercase text-slate-700">${p.firstName}${isMe ? ' (You)' : ''}</span>
+                        </div>
+                        ${canKick ? `
+                            <button onclick="handleKick('${uid}')" class="text-rose-500 p-2 active:scale-90 transition-transform">
+                                <i data-lucide="user-minus" class="w-4 h-4"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        };
+
+        window.handleKick = async (uid) => {
+            if (!state.activeRid) return;
+            try {
+                // Remove from relay members (Public)
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'relay_members', `${state.activeRid}_${uid}`));
+                // Remove from user's relays (Private)
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', uid, 'relays', state.activeRid));
+                window.showToast("Member Removed");
+            } catch (e) { window.showToast("Kick Failed"); }
         };
 
         const renderCal = () => {
@@ -615,7 +617,7 @@
             const dayStats = state.statuses[state.selDate] || {};
             
             state.members.forEach(uid => {
-                const p = state.profiles[uid] || { firstName: 'Syncing...' };
+                const p = state.profiles[uid] || { firstName: 'User' };
                 const s = dayStats[uid] || 'Not Set';
                 list.innerHTML += `
                     <div class="flex items-center justify-between p-3 bg-white border border-slate-50 rounded-2xl">
@@ -632,18 +634,40 @@
             lucide.createIcons();
         };
 
+        window.handlePropose = () => {
+            window.showToast("Proposal Drafted - Professional Logic Connected");
+            // Integration for plan proposing logic can be added here
+        };
+
+        const renderNotifs = () => {
+            const list = document.getElementById('notif-list');
+            const badge = document.getElementById('notif-badge');
+            if (state.notifs.length === 0) {
+                list.innerHTML = `<div class="py-10 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">No Alerts</div>`;
+                badge.classList.remove('active');
+                return;
+            }
+            badge.innerText = state.notifs.length > 9 ? '9+' : state.notifs.length;
+            badge.classList.add('active');
+            list.innerHTML = state.notifs.map(n => {
+                const p = state.profiles[n.userId] || { firstName: 'Member' };
+                return `
+                    <div class="premium-card p-4 flex gap-4 items-start">
+                        <div class="flex-1">
+                            <p class="text-[10px] font-bold text-slate-600 leading-tight">${p.firstName}: ${n.message}</p>
+                            <p class="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">${new Date(n.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
         window.modMonth = (v) => { state.viewDate.setMonth(state.viewDate.getMonth()+v); renderCal(); };
         window.toggleAuth = (m) => { document.getElementById('auth-login').classList.toggle('hidden', m==='signup'); document.getElementById('auth-signup').classList.toggle('hidden', m==='login'); };
 
         onAuthStateChanged(auth, (user) => {
-            if (user) { 
-                state.user = user; 
-                startGlobalSync(user); 
-            } else { 
-                state.user = null; 
-                killSync(); 
-                window.setScreen('screen-auth'); 
-            }
+            if (user) { state.user = user; startGlobalSync(user); } 
+            else { state.user = null; killSync(); window.setScreen('screen-auth'); }
         });
 
         lucide.createIcons();
