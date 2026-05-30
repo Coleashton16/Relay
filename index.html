@@ -6,6 +6,27 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Relay - Group Planning</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Configure Tailwind CSS to enable high-performance manual class-based dark mode
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4F46E5',
+          }
+        }
+      }
+    }
+  </script>
+  <script>
+    // Instant OLED dark mode initialization to prevent dynamic theme flashes on boot
+    if (localStorage.getItem("RELAY_DARK_MODE") === "true") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  </script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet" />
@@ -49,7 +70,7 @@
 
     .selected-day {
       border: 2px solid var(--primary) !important;
-      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
     }
 
     .modal-slide-up {
@@ -60,9 +81,10 @@
     .modal-slide-up.active { transform: translateY(0); }
 
     .tab-bar {
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: saturate(180%) blur(20px);
       border-top: 0.5px solid rgba(0,0,0,0.08);
+      padding-bottom: env(safe-area-inset-bottom, 12px);
     }
 
     #toast {
@@ -76,29 +98,6 @@
       100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
     }
     .pulse-plan { animation: pulse-indigo 2s infinite; }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      position: relative;
-      overflow: hidden;
-    }
-    .status-dot::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: currentColor;
-    }
-    .bg-free { color: #10B981; }
-    .bg-shift { color: #EF4444; }
-    .bg-busy { color: #F59E0B; }
-
-    /* half/partial indicator when user has time slots */
-    .status-dot.partial::before {
-      background: linear-gradient(to right, currentColor 0 50%, #E5E7EB 50% 100%);
-    }
 
     .tab-btn { position: relative; transition: color 0.2s; }
     .tab-btn.active { color: var(--primary); }
@@ -167,7 +166,7 @@
     }
   </style>
 </head>
-<body>
+<body class="dark:bg-zinc-950">
 
 <div id="toast"
      class="fixed top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl opacity-0 pointer-events-none -translate-y-5 flex items-center gap-3 w-[85%] max-w-[400px] text-center justify-center">
@@ -198,38 +197,100 @@
   </div>
 </div>
 
-<div class="app-container">
+<div class="app-container dark:bg-black dark:text-white">
 
+  <!-- New Feature Announcement Modal Overlay -->
+  <div id="changelog-modal" class="absolute inset-0 bg-slate-900/60 dark:bg-black/85 backdrop-blur-sm z-[480] flex items-center justify-center p-6 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-[2.5rem] w-full p-6 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 dark:bg-indigo-450/15 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <p class="text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Update Installed</p>
+          <h3 class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">What's New</h3>
+        </div>
+      </div>
+      
+      <div class="space-y-4 my-2 max-h-[260px] overflow-y-auto no-scrollbar pr-1">
+        <div class="flex gap-3 items-start">
+          <div class="w-6 h-6 rounded-full bg-slate-50 dark:bg-zinc-950 flex items-center justify-center text-slate-500 dark:text-zinc-400 shrink-0 mt-0.5">
+            <i data-lucide="moon" class="w-3.5 h-3.5"></i>
+          </div>
+          <div>
+            <h4 class="text-[10px] font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider leading-none">OLED True Black</h4>
+            <p class="text-[10px] text-slate-400 dark:text-zinc-500 mt-1 leading-snug">Toggle a pure black style inside the settings profile menu to save battery life on AMOLED displays.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 items-start">
+          <div class="w-6 h-6 rounded-full bg-slate-50 dark:bg-zinc-950 flex items-center justify-center text-slate-500 dark:text-zinc-400 shrink-0 mt-0.5">
+            <i data-lucide="circle-dot" class="w-3.5 h-3.5"></i>
+          </div>
+          <div>
+            <h4 class="text-[10px] font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider leading-none">Ring Availability</h4>
+            <p class="text-[10px] text-slate-400 dark:text-zinc-500 mt-1 leading-snug">Availability dots are now beautiful segmented rings showing team status ratios clearly on dates.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 items-start">
+          <div class="w-6 h-6 rounded-full bg-slate-50 dark:bg-zinc-950 flex items-center justify-center text-slate-500 dark:text-zinc-400 shrink-0 mt-0.5">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+          </div>
+          <div>
+            <h4 class="text-[10px] font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider leading-none">Privacy Upgraded</h4>
+            <p class="text-[10px] text-slate-400 dark:text-zinc-500 mt-1 leading-snug">User email addresses are now completely hidden on member cards for maximum team privacy.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 items-start">
+          <div class="w-6 h-6 rounded-full bg-slate-50 dark:bg-zinc-950 flex items-center justify-center text-slate-500 dark:text-zinc-400 shrink-0 mt-0.5">
+            <i data-lucide="layout" class="w-3.5 h-3.5"></i>
+          </div>
+          <div>
+            <h4 class="text-[10px] font-black text-slate-800 dark:text-zinc-100 uppercase tracking-wider leading-none">Compact Hot Bar</h4>
+            <p class="text-[10px] text-slate-400 dark:text-zinc-500 mt-1 leading-snug">Redesigned, ultra-neat floating availability selector active at the bottom of the viewport.</p>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="dismissChangelog()" class="w-full bg-slate-900 dark:bg-zinc-100 dark:text-black text-white py-4 rounded-3xl font-black uppercase text-xs tracking-wider active:scale-95 transition-transform shadow-md mt-1">
+        Got It
+      </button>
+    </div>
+  </div>
+
+  <!-- Nice & Clean Minimalist Loading Screen -->
   <div id="screen-loading"
-       class="absolute inset-0 bg-white z-[500] flex flex-col items-center justify-center transition-opacity duration-500">
-    <div class="w-12 h-12 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
-    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Relay Cloud Sync</p>
+       class="absolute inset-0 bg-white dark:bg-black z-[500] flex flex-col items-center justify-center transition-opacity duration-500">
+    <div class="w-10 h-10 border-2 border-slate-200 dark:border-zinc-850 border-t-indigo-600 dark:border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+    <p class="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.25em]">Relay</p>
   </div>
 
   <!-- AUTH SCREEN -->
-  <section id="screen-auth" class="absolute inset-0 z-[400] bg-white flex flex-col px-8 pt-20 hidden">
+  <section id="screen-auth" class="absolute inset-0 z-[400] bg-white dark:bg-black flex flex-col px-8 pt-20 hidden">
     <div class="text-center mb-12">
       <div
-        class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-100/50">
+        class="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-100/50 dark:shadow-none">
         <i data-lucide="zap" class="w-10 h-10"></i>
       </div>
-      <h1 class="text-4xl font-black tracking-tighter text-slate-900 italic">Relay.</h1>
-      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-3">Identity Verified Planning</p>
+      <h1 class="text-4xl font-black tracking-tighter text-slate-900 dark:text-white italic">Relay.</h1>
+      <p class="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em] mt-3">Identity Verified Planning</p>
     </div>
 
     <div id="auth-login" class="space-y-4">
       <input type="email" id="login-email"
-             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white"
+             class="w-full bg-slate-50 border border-slate-100 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white focus:dark:bg-zinc-900 focus:dark:border-indigo-500"
              placeholder="Email Address" />
       <input type="password" id="login-pass"
-             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white"
+             class="w-full bg-slate-50 border border-slate-100 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white p-5 rounded-3xl text-sm outline-none focus:border-indigo-400 focus:bg-white focus:dark:bg-zinc-900 focus:dark:border-indigo-500"
              placeholder="Password" />
       <button onclick="handleLogin()"
               class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">
         Sign In
       </button>
       <button onclick="toggleAuth('signup')"
-              class="w-full text-[10px] font-black text-indigo-600 uppercase tracking-widest pt-4">
+              class="w-full text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest pt-4">
         Create New Account
       </button>
     </div>
@@ -238,7 +299,7 @@
       <div class="flex flex-col items-center mb-4">
         <label for="signup-avatar" class="cursor-pointer group relative">
           <div
-            class="w-24 h-24 rounded-full bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+            class="w-24 h-24 rounded-full bg-slate-50 dark:bg-zinc-900 border-2 border-dashed border-slate-200 dark:border-zinc-800 flex items-center justify-center overflow-hidden animate-pulse">
             <img id="signup-avatar-preview" src="" class="hidden w-full h-full object-cover" />
             <i data-lucide="camera" id="signup-avatar-icon" class="w-8 h-8 text-slate-300"></i>
           </div>
@@ -248,57 +309,57 @@
       </div>
       <div class="grid grid-cols-2 gap-3">
         <input type="text" id="signup-f"
-               class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+               class="w-full bg-slate-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white border border-slate-100 p-5 rounded-3xl text-sm"
                placeholder="First Name" />
         <input type="text" id="signup-l"
-               class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+               class="w-full bg-slate-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white border border-slate-100 p-5 rounded-3xl text-sm"
                placeholder="Last Name" />
       </div>
       <input type="email" id="signup-e"
-             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+             class="w-full bg-slate-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white border border-slate-100 p-5 rounded-3xl text-sm"
              placeholder="Email" />
       <input type="password" id="signup-p"
-             class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm"
+             class="w-full bg-slate-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white border border-slate-100 p-5 rounded-3xl text-sm"
              placeholder="Password (6+ Characters)" />
       <button onclick="handleSignup()"
               class="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-transform">
         Create Account
       </button>
       <button onclick="toggleAuth('login')"
-              class="w-full text-[10px] font-black text-slate-400 uppercase py-2">
+              class="w-full text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase py-2">
         Back to Login
       </button>
     </div>
   </section>
 
   <!-- SETUP SCREEN -->
-  <section id="screen-setup" class="absolute inset-0 z-[300] bg-white flex flex-col px-8 pt-20 hidden">
+  <section id="screen-setup" class="absolute inset-0 z-[300] bg-white dark:bg-black flex flex-col px-8 pt-20 hidden">
     <div class="text-center mb-10">
-      <h2 class="text-3xl font-black text-slate-900 tracking-tight italic uppercase">Relays</h2>
-      <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">
+      <h2 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight italic uppercase">Relays</h2>
+      <p class="text-xs text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-widest mt-2">
         No active team detected
       </p>
     </div>
     <div id="setup-relay-list" class="space-y-3 mb-8 max-h-[300px] overflow-y-auto no-scrollbar"></div>
     <div class="mt-auto pb-10 space-y-4">
-      <div class="premium-card p-6 border-indigo-100 bg-indigo-50/20">
-        <label class="text-[10px] font-black text-indigo-600 uppercase mb-3 block text-center tracking-widest">
+      <div class="premium-card p-6 border-indigo-100 dark:border-indigo-950/80 bg-indigo-50/20 dark:bg-indigo-950/10">
+        <label class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase mb-3 block text-center tracking-widest">
           Join Team
         </label>
         <input type="text" id="join-code"
-               class="w-full bg-white border border-indigo-100 p-4 rounded-2xl text-center text-xl font-mono font-black uppercase tracking-widest outline-none"
+               class="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-zinc-800 p-4 rounded-2xl text-center text-xl font-mono font-black uppercase tracking-widest dark:text-white outline-none"
                placeholder="CODE" />
         <button onclick="handleJoin()"
-                class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest mt-3 active:scale-95">
+                class="w-full bg-slate-900 dark:bg-zinc-800 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest mt-3 active:scale-95">
           Link Relay
         </button>
       </div>
-      <div class="premium-card p-6">
-        <label class="text-[10px] font-black text-slate-400 uppercase mb-3 block text-center tracking-widest">
+      <div class="premium-card p-6 dark:bg-zinc-900 dark:border-zinc-800">
+        <label class="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase mb-3 block text-center tracking-widest">
           Create Relay
         </label>
         <input type="text" id="new-name"
-               class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-center text-sm font-bold"
+               class="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-100 dark:border-zinc-800 dark:text-white p-4 rounded-2xl text-center text-sm font-bold"
                placeholder="Relay Name" />
         <button onclick="handleCreate()"
                 class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest mt-3 shadow-lg active:scale-95">
@@ -309,46 +370,46 @@
   </section>
 
   <!-- DASHBOARD SCREEN -->
-  <section id="screen-dash" class="absolute inset-0 flex flex-col hidden">
+  <section id="screen-dash" class="absolute inset-0 flex flex-col hidden dark:bg-black">
     <!-- Header -->
-    <header class="bg-white px-6 pt-12 pb-5 flex flex-col border-b border-slate-50 shrink-0">
+    <header class="bg-white dark:bg-black px-6 pt-12 pb-5 flex flex-col border-b border-slate-50 dark:border-zinc-900 shrink-0">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-4">
           <button onclick="openModal('modal-settings')"
-                  class="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 shadow-sm">
+                  class="w-11 h-11 bg-slate-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-sm">
             <img id="dash-avatar" src="" class="hidden w-full h-full object-cover" />
-            <i id="dash-avatar-icon" data-lucide="user" class="w-5 h-5 text-slate-400"></i>
+            <i id="dash-avatar-icon" data-lucide="user" class="w-5 h-5 text-slate-400 dark:text-zinc-500"></i>
           </button>
           <div>
             <h2 id="dash-relay-name"
-                class="text-sm font-black text-slate-900 uppercase tracking-tight leading-none mb-1">
+                class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none mb-1">
               ---
             </h2>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              Code: <span id="dash-relay-code" class="text-indigo-600 font-mono">XXXXX</span>
+            <p class="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+              Code: <span id="dash-relay-code" class="text-indigo-600 dark:text-indigo-400 font-mono">XXXXX</span>
             </p>
           </div>
         </div>
         <div class="flex items-center gap-2">
           <button onclick="openModal('modal-notifications')"
-                  class="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 transition-colors active:bg-slate-100">
+                  class="relative w-10 h-10 rounded-2xl bg-slate-50 dark:bg-zinc-900 flex items-center justify-center text-slate-400 dark:text-zinc-500 transition-colors active:bg-slate-100 active:dark:bg-zinc-800">
             <i data-lucide="bell" class="w-4 h-4"></i>
             <div id="notif-badge" class="notif-badge">0</div>
           </button>
           <button onclick="setScreen('screen-setup')"
-                  class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+                  class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 dark:text-zinc-500">
             <i data-lucide="grid" class="w-4 h-4"></i>
           </button>
         </div>
       </div>
 
-      <div class="flex gap-8 px-2 border-t border-slate-50 pt-4">
+      <div class="flex gap-8 px-2 border-t border-slate-50 dark:border-zinc-900 pt-4">
         <button onclick="switchDashTab('cal')" id="tab-cal"
-                class="tab-btn active text-[10px] font-black uppercase tracking-[0.2em]">
+                class="tab-btn active text-[10px] font-black uppercase tracking-[0.2em] dark:text-zinc-400 dark:active:text-white">
           Calendar
         </button>
         <button onclick="switchDashTab('agenda')" id="tab-agenda"
-                class="tab-btn text-[10px] font-black uppercase tracking-[0.2em]">
+                class="tab-btn text-[10px] font-black uppercase tracking-[0.2em] dark:text-zinc-500 dark:active:text-white">
           Agenda
         </button>
       </div>
@@ -357,32 +418,32 @@
     <main class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-40">
       <!-- CALENDAR VIEW SECTION -->
       <div id="view-calendar" class="space-y-6">
-        <section class="premium-card p-6">
+        <section class="premium-card p-6 dark:bg-zinc-900 dark:border-zinc-800">
           <div class="flex items-center justify-between mb-6">
             <h3 id="cal-month"
-                class="text-sm font-black text-slate-900 uppercase tracking-widest italic">
+                class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest italic">
               Month
             </h3>
             <div class="flex gap-2">
               <button onclick="modMonth(-1)"
-                      class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center">
+                      class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-slate-800 dark:text-zinc-200">
                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
               </button>
               <button onclick="modMonth(1)"
-                      class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center">
+                      class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-slate-800 dark:text-zinc-200">
                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
               </button>
             </div>
           </div>
-          <div class="grid grid-cols-7 gap-1.5 mb-2 text-center text-[8px] font-black text-slate-300 uppercase">
+          <div class="grid grid-cols-7 gap-1.5 mb-2 text-center text-[8px] font-black text-slate-300 dark:text-zinc-600 uppercase">
             <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
           </div>
           <div id="cal-grid" class="grid grid-cols-7 gap-y-3 gap-x-1.5"></div>
         </section>
 
-        <section class="premium-card p-6 min-h-[300px] flex flex-col">
+        <section class="premium-card p-6 min-h-[300px] flex flex-col dark:bg-zinc-900 dark:border-zinc-800">
           <div id="day-empty"
-               class="flex-1 flex flex-col items-center justify-center text-slate-300 py-10">
+               class="flex-1 flex flex-col items-center justify-center text-slate-300 dark:text-zinc-700 py-10">
             <i data-lucide="calendar" class="w-8 h-8 mb-3 opacity-20"></i>
             <p class="text-[10px] font-black uppercase tracking-[0.3em]">Pick a Date</p>
           </div>
@@ -390,19 +451,19 @@
           <div id="day-content" class="hidden flex flex-col h-full">
             <div class="text-center mb-4">
               <p id="detail-date"
-                 class="text-xs font-black text-indigo-600 uppercase tracking-[0.4em]">
+                 class="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.4em]">
                 Date Label
               </p>
             </div>
 
             <div class="mb-4 grid grid-cols-2 gap-2">
               <button onclick="openSuggestModal('times')"
-                      class="bg-slate-900 text-white py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5">
+                      class="bg-slate-900 dark:bg-zinc-800 text-white py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
                 <i data-lucide="clock" class="w-3 h-3"></i>
                 Find Time (14 Days)
               </button>
               <button onclick="openSuggestModal('days')"
-                      class="bg-slate-100 text-slate-700 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5">
+                      class="bg-slate-100 dark:bg-zinc-950 text-slate-700 dark:text-zinc-300 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
                 <i data-lucide="calendar-search" class="w-3 h-3"></i>
                 Find Days (2 Months)
               </button>
@@ -415,7 +476,7 @@
               </button>
 
               <div id="plan-ui"
-                   class="hidden mt-3 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 flex flex-col gap-4">
+                   class="hidden mt-3 p-5 rounded-[2rem] bg-slate-50 dark:bg-zinc-950 border border-slate-100 dark:border-zinc-800 flex flex-col gap-4">
                 <div class="flex items-center justify-between">
                   <div>
                     <h4 id="plan-status"
@@ -423,55 +484,55 @@
                       Pending
                     </h4>
                     <p id="plan-meta"
-                       class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                       class="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
                       ---
                     </p>
                   </div>
                   <div id="plan-count"
-                       class="text-2xl font-black text-slate-900 italic">
+                       class="text-2xl font-black text-slate-900 dark:text-white italic">
                     0/0
                   </div>
                 </div>
 
                 <div id="plan-confirmed-details"
-                     class="hidden space-y-3 pt-2 border-t border-slate-200">
+                     class="hidden space-y-3 pt-2 border-t border-slate-200 dark:border-zinc-800">
                   <div class="grid grid-cols-2 gap-2">
                     <div class="space-y-1">
                       <label
-                        class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                        class="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest ml-1">
                         Starts
                       </label>
                       <input type="time" id="plan-time-start"
-                             class="w-full bg-white border border-slate-100 p-2 rounded-xl text-xs font-bold"
+                             class="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-2 rounded-xl text-xs font-bold"
                              onchange="updatePlanDetails()" />
                     </div>
                     <div class="space-y-1">
                       <label
-                        class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                        class="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest ml-1">
                         Ends
                       </label>
                       <input type="time" id="plan-time-end"
-                             class="w-full bg-white border border-slate-100 p-2 rounded-xl text-xs font-bold"
+                             class="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-2 rounded-xl text-xs font-bold"
                              onchange="updatePlanDetails()" />
                     </div>
                   </div>
                   <div class="space-y-1">
                     <label
-                      class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      class="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest ml-1">
                       Venue Name
                     </label>
                     <input type="text" id="plan-location"
-                           class="w-full bg-white border border-slate-100 p-2.5 rounded-xl text-xs font-bold"
+                           class="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-2.5 rounded-xl text-xs font-bold"
                            placeholder="e.g. Skyline Bar"
                            onchange="updatePlanDetails()" />
                   </div>
                   <div class="space-y-1">
                     <label
-                      class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      class="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest ml-1">
                       Full Address
                     </label>
                     <textarea id="plan-address"
-                              class="w-full bg-white border border-slate-100 p-2.5 rounded-xl text-xs font-bold min-h-[60px]"
+                              class="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-2.5 rounded-xl text-xs font-bold min-h-[60px]"
                               placeholder="123 Main St, City..."
                               onchange="updatePlanDetails()"></textarea>
                   </div>
@@ -483,40 +544,41 @@
                     Accept
                   </button>
                   <button id="btn-reject" onclick="handlePlanResp('reject')"
-                          class="bg-white text-rose-500 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-rose-100 active:scale-95 transition-transform">
+                          class="bg-white text-rose-500 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-rose-100 dark:border-rose-950 active:scale-95 transition-transform">
                     Reject
                   </button>
                 </div>
                 <div id="plan-mgmt"
-                     class="pt-2 border-t border-slate-200 flex flex-col gap-2">
+                     class="pt-2 border-t border-slate-200 dark:border-zinc-800 flex flex-col gap-2">
                   <button id="btn-withdraw" onclick="handlePlanReset()"
-                          class="hidden w-full bg-slate-200 text-slate-600 py-2 rounded-xl font-black uppercase text-[8px] tracking-widest active:scale-95 transition-transform">
+                          class="hidden w-full bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 py-2 rounded-xl font-black uppercase text-[8px] tracking-widest active:scale-95 transition-transform">
                     Withdraw My Response
                   </button>
                   <button id="btn-delete-plan" onclick="handleDeletePlan()"
-                          class="hidden w-full bg-rose-50 text-rose-500 py-2 rounded-xl font-black uppercase text-[8px] tracking-widest active:scale-95 transition-transform">
+                          class="hidden w-full bg-rose-50 dark:bg-rose-950/20 text-rose-500 py-2 rounded-xl font-black uppercase text-[8px] tracking-widest active:scale-95 transition-transform">
                     Terminate Plan (Organizer)
                   </button>
                 </div>
               </div>
             </div>
 
+            <!-- Simplified Teammate availability section with lightweight cards and dual columns -->
             <div class="flex-1">
               <h4
-                class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2 border-b border-slate-50 pb-2 flex items-center justify-between">
+                class="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.4em] mb-3 border-b border-slate-100 dark:border-zinc-850 pb-2 flex items-center justify-between">
                 <span>Teammate Availability</span>
                 <button onclick="openUnavailModal()"
-                        class="text-[8px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1">
+                        class="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1">
                   <i data-lucide="clock-off" class="w-3 h-3"></i>
                   Slots
                 </button>
               </h4>
-              <div id="day-members" class="space-y-2"></div>
+              <div id="day-members" class="grid grid-cols-2 gap-2"></div>
             </div>
 
             <!-- Per-user unavailability summary -->
-            <div id="day-unavail-summary" class="mt-3 border-t border-slate-100 pt-3 hidden">
-              <p class="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2 flex items-center gap-1.5">
+            <div id="day-unavail-summary" class="mt-3 border-t border-slate-100 dark:border-zinc-850 pt-3 hidden">
+              <p class="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em] mb-2 flex items-center gap-1.5">
                 <i data-lucide="clock-off" class="w-3 h-3"></i>
                 Unavailability Windows
               </p>
@@ -530,7 +592,7 @@
       <!-- AGENDA VIEW SECTION -->
       <div id="view-agenda" class="hidden space-y-4">
         <div id="agenda-empty"
-             class="flex flex-col items-center justify-center py-20 text-slate-300">
+             class="flex flex-col items-center justify-center py-20 text-slate-300 dark:text-zinc-700">
           <i data-lucide="layout-list" class="w-10 h-10 mb-4 opacity-10"></i>
           <p class="text-[10px] font-black uppercase tracking-[0.3em]">No Upcoming Trips</p>
         </div>
@@ -538,64 +600,56 @@
       </div>
     </main>
 
-    <!-- Bottom Availability Bar -->
+    <!-- Bottom Availability Bar (Ultra-neat compact mobile floating bar) -->
     <div id="footer-availability"
-         class="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto p-6 pb-10 pointer-events-none">
+         class="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto px-4 pb-5 pointer-events-none z-50">
       <div
-        class="tab-bar rounded-[2.5rem] p-2 flex justify-between items-center shadow-2xl pointer-events-auto border border-white">
-        <button onclick="setStatus('free')"
-                class="flex-1 py-4 flex flex-col items-center gap-1 group">
-          <div
-            class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white/40 active:scale-90 transition-transform shadow-lg shadow-emerald-200"></div>
-          <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">
-            Free
-          </span>
+        class="rounded-2xl p-1.5 flex justify-between items-center shadow-xl pointer-events-auto border border-slate-800 dark:border-zinc-800/80 bg-slate-950/95 dark:bg-black/95 backdrop-blur-md gap-1.5 w-full">
+        
+        <button onclick="setStatus('free')" id="btn-status-free"
+                class="flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 text-slate-400 dark:text-zinc-400">
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          <span class="text-[8px] font-black uppercase tracking-wider">Available</span>
         </button>
-        <div class="w-px h-8 bg-slate-200"></div>
-        <button onclick="setStatus('shift')"
-                class="flex-1 py-4 flex flex-col items-center gap-1 group">
-          <div
-            class="w-6 h-6 rounded-full bg-red-500 border-2 border-white/40 active:scale-90 transition-transform shadow-lg shadow-red-200"></div>
-          <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">
-            Shift
-          </span>
+        
+        <button onclick="setStatus('shift')" id="btn-status-shift"
+                class="flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 text-slate-400 dark:text-zinc-400">
+          <i data-lucide="calendar-clock" class="w-4 h-4"></i>
+          <span class="text-[8px] font-black uppercase tracking-wider">Shift</span>
         </button>
-        <div class="w-px h-8 bg-slate-200"></div>
-        <button onclick="setStatus('unavail')"
-                class="flex-1 py-4 flex flex-col items-center gap-1 group">
-          <div
-            class="w-6 h-6 rounded-full bg-amber-500 border-2 border-white/40 active:scale-90 transition-transform shadow-lg shadow-amber-200"></div>
-          <span class="text-[8px] font-black text-slate-600 uppercase tracking-widest">
-            Busy
-          </span>
+        
+        <button onclick="setStatus('unavail')" id="btn-status-unavail"
+                class="flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 text-slate-400 dark:text-zinc-400">
+          <i data-lucide="ban" class="w-4 h-4"></i>
+          <span class="text-[8px] font-black uppercase tracking-wider">Busy</span>
         </button>
-        <div class="w-px h-8 bg-slate-200"></div>
-        <button onclick="setStatus(null)"
-                class="flex-1 py-4 flex flex-col items-center gap-1 group">
-          <div
-            class="w-6 h-6 rounded-full bg-slate-100 border-2 border-white active:scale-90 transition-transform"></div>
-          <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-            Reset
-          </span>
+        
+        <div class="w-px h-6 bg-slate-800 dark:bg-zinc-800"></div>
+        
+        <button onclick="setStatus(null)" id="btn-status-reset"
+                class="py-2 px-3 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 text-slate-500 dark:text-zinc-500">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          <span class="text-[8px] font-black uppercase tracking-wider">Reset</span>
         </button>
+
       </div>
     </div>
   </section>
 
   <!-- NOTIFICATIONS MODAL -->
   <section id="modal-notifications"
-           class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
+           class="absolute inset-0 bg-slate-50 dark:bg-black modal-slide-up flex flex-col">
     <header
-      class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+      class="bg-white dark:bg-black px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 dark:border-zinc-900 shrink-0">
       <button onclick="closeModal('modal-notifications')"
-              class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+              class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
         Close
       </button>
-      <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">
+      <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest italic">
         Notifications
       </h3>
       <button onclick="clearNotifs()"
-              class="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+              class="text-[8px] font-black text-slate-300 dark:text-zinc-600 uppercase tracking-widest">
         Clear
       </button>
     </header>
@@ -606,41 +660,41 @@
 
   <!-- SETTINGS MODAL -->
   <section id="modal-settings"
-           class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
+           class="absolute inset-0 bg-slate-50 dark:bg-black modal-slide-up flex flex-col">
     <header
-      class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+      class="bg-white dark:bg-black px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 dark:border-zinc-900 shrink-0">
       <button onclick="closeModal('modal-settings')"
-              class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+              class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
         Done
       </button>
-      <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">
+      <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest italic">
         SETTINGS
       </h3>
       <div class="w-10"></div>
     </header>
 
     <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-20">
-      <div class="premium-card p-6">
-        <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
+      <div class="premium-card p-6 dark:bg-zinc-900 dark:border-zinc-800">
+        <h4 class="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4">
           Identity Sync
         </h4>
         <div class="flex items-center gap-4 mb-6">
           <label for="edit-avatar" class="cursor-pointer relative">
             <div
-              class="w-20 h-20 rounded-[2rem] bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
+              class="w-20 h-20 rounded-[2rem] bg-slate-100 dark:bg-zinc-950 overflow-hidden border border-slate-200 dark:border-zinc-800 flex items-center justify-center">
               <img id="set-avatar" src="" class="hidden w-full h-full object-cover" />
               <i data-lucide="camera" id="set-avatar-icon"
-                 class="w-6 h-6 text-slate-300"></i>
+                 class="w-6 h-6 text-slate-300 dark:text-zinc-600"></i>
             </div>
             <input type="file" id="edit-avatar" class="hidden" accept="image/*"
                    onchange="previewAvatar(event, 'set-avatar')" />
           </label>
           <div class="flex-1 space-y-2">
             <input type="text" id="set-fname"
-                   class="w-full bg-slate-100 border-none p-3 rounded-xl text-sm font-bold"
+                   class="w-full bg-slate-100 border-none dark:bg-zinc-950 dark:text-white p-3 rounded-xl text-sm font-bold"
                    placeholder="First Name" />
             <input type="text" id="set-lname"
-                   class="w-full bg-slate-100 border-none p-3 rounded-xl text-sm font-bold"
+                   class="w-full bg-slate-100 border-none dark:bg-zinc-950 dark:text-white p-3 rounded-xl text-sm font-bold"
                    placeholder="Last Name" />
           </div>
         </div>
@@ -650,37 +704,58 @@
         </button>
       </div>
 
-      <div class="premium-card p-6">
-        <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
+      <!-- OLED True Black Toggle Card -->
+      <div class="premium-card p-6 dark:bg-zinc-900 dark:border-zinc-800">
+        <h4 class="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4">
+          Appearance Settings
+        </h4>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs font-black text-slate-800 dark:text-zinc-100 uppercase leading-none mb-1">
+              True Black Dark Mode
+            </p>
+            <p class="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
+              OLED-optimized deep black theme
+            </p>
+          </div>
+          <!-- Custom Switch Toggle -->
+          <button onclick="toggleDarkMode()" id="btn-dark-toggle" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-slate-200 dark:bg-indigo-600">
+            <span id="dark-toggle-knob" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0 dark:translate-x-5"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="premium-card p-6 dark:bg-zinc-900 dark:border-zinc-800">
+        <h4 class="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4">
           Relay Controls
         </h4>
-        <div class="bg-slate-900 rounded-3xl p-5 text-center mb-6 shadow-xl">
-          <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">
+        <div class="bg-slate-900 dark:bg-zinc-950 rounded-3xl p-5 text-center mb-6 shadow-xl">
+          <p class="text-[8px] font-black text-slate-500 dark:text-zinc-600 uppercase tracking-widest mb-1">
             Invite Code
           </p>
           <p id="set-code-display"
-             class="text-4xl font-mono font-black text-white tracking-widest">
+             class="text-4xl font-mono font-black text-white dark:text-indigo-400 tracking-widest">
             XXXXX
           </p>
         </div>
         <div class="space-y-4">
           <div>
             <label
-              class="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-2">
+              class="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase ml-1 block mb-2">
               Team Alias
             </label>
             <div class="flex gap-2">
               <input type="text" id="set-relay-name"
-                     class="flex-1 bg-slate-100 p-4 rounded-2xl text-sm font-bold border-none" />
+                     class="flex-1 bg-slate-100 dark:bg-zinc-950 p-4 rounded-2xl text-sm font-bold border-none dark:text-white" />
               <button onclick="renameRelay()"
                       class="bg-indigo-600 text-white px-6 rounded-2xl font-black uppercase text-[10px] tracking-widest">
                 Save
               </button>
             </div>
           </div>
-          <div class="pt-4 border-t border-slate-50">
+          <div class="pt-4 border-t border-slate-50 dark:border-zinc-800">
             <p
-              class="text-[8px] font-black text-slate-400 uppercase mb-3 text-center tracking-widest">
+              class="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase mb-3 text-center tracking-widest">
               Relay Roster
             </p>
             <div id="set-members" class="space-y-2"></div>
@@ -688,23 +763,23 @@
         </div>
       </div>
 
-      <div class="premium-card p-2 space-y-1">
+      <div class="premium-card p-2 space-y-1 dark:bg-zinc-900 dark:border-zinc-800">
         <button onclick="handlePassReset()"
-                class="w-full flex items-center justify-between p-5 text-slate-600 active:bg-slate-50 rounded-2xl transition-colors">
+                class="w-full flex items-center justify-between p-5 text-slate-600 dark:text-zinc-300 active:bg-slate-50 dark:active:bg-zinc-950 rounded-2xl transition-colors">
           <span class="text-[10px] font-black uppercase tracking-widest">
             Reset Password
           </span>
-          <i data-lucide="key" class="w-4 h-4 opacity-30"></i>
+          <i data-lucide="key" class="w-4 h-4 opacity-30 dark:opacity-50"></i>
         </button>
         <button onclick="handleLeave()"
-                class="w-full flex items-center justify-between p-5 text-rose-500 active:bg-rose-50 rounded-2xl transition-colors">
+                class="w-full flex items-center justify-between p-5 text-rose-500 active:bg-rose-50 dark:active:bg-rose-950/20 rounded-2xl transition-colors">
           <span class="text-[10px] font-black uppercase tracking-widest">
             Leave Active Relay
           </span>
           <i data-lucide="log-out" class="w-4 h-4"></i>
         </button>
         <button id="btn-delete" onclick="handleDelete()"
-                class="w-full flex items-center justify-between p-5 text-rose-600 active:bg-rose-50 rounded-2xl transition-colors hidden">
+                class="w-full flex items-center justify-between p-5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-950/20 rounded-2xl transition-colors hidden">
           <span class="text-[10px] font-black uppercase tracking-widest">
             Delete Relay
           </span>
@@ -713,7 +788,7 @@
       </div>
 
       <button onclick="handleLogout()"
-              class="w-full py-10 text-slate-300 font-black uppercase text-[10px] tracking-[0.5em] active:text-rose-500">
+              class="w-full py-10 text-slate-300 dark:text-zinc-600 font-black uppercase text-[10px] tracking-[0.5em] active:text-rose-500">
         End Session & Logout
       </button>
     </div>
@@ -721,24 +796,24 @@
 
   <!-- PARTIAL UNAVAILABILITY MODAL -->
   <section id="modal-unavail"
-           class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
+           class="absolute inset-0 bg-slate-50 dark:bg-black modal-slide-up flex flex-col">
     <header
-      class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+      class="bg-white dark:bg-black px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 dark:border-zinc-900 shrink-0">
       <button onclick="closeModal('modal-unavail')"
-              class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+              class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
         Done
       </button>
       <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest italic">
         Partial Unavailable
       </h3>
       <button onclick="saveUnavailSlots()"
-              class="text-[8px] font-black text-emerald-600 uppercase tracking-widest">
+              class="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
         Save
       </button>
     </header>
     <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4 pb-20">
       <p id="unavail-date-label"
-         class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] text-center">
+         class="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em] text-center">
         Date
       </p>
 
@@ -746,12 +821,12 @@
       </div>
 
       <button onclick="addUnavailSlotRow()"
-              class="w-full bg-slate-900 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 active:scale-95">
+              class="w-full bg-slate-900 dark:bg-zinc-800 text-white py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 active:scale-95">
         <i data-lucide="plus" class="w-4 h-4"></i>
         Add Time Window
       </button>
 
-      <p class="text-[9px] text-slate-400 text-center leading-snug">
+      <p class="text-[9px] text-slate-400 dark:text-zinc-500 text-center leading-snug">
         Any window you add here means you are not available during that time.
         Team plans that overlap these windows will be flagged.
       </p>
@@ -760,11 +835,11 @@
 
   <!-- SUGGESTIONS MODAL -->
   <section id="modal-suggest"
-           class="absolute inset-0 bg-slate-50 modal-slide-up flex flex-col">
+           class="absolute inset-0 bg-slate-50 dark:bg-black modal-slide-up flex flex-col">
     <header
-      class="bg-white px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 shrink-0">
+      class="bg-white dark:bg-black px-6 pt-12 pb-5 flex items-center justify-between border-b border-slate-100 dark:border-zinc-900 shrink-0">
       <button onclick="closeModal('modal-suggest')"
-              class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+              class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
         Close
       </button>
       <h3 id="suggest-title"
@@ -869,6 +944,10 @@ const setScreen = (id) => {
     .getElementById("screen-loading")
     .classList.add("opacity-0", "pointer-events-none");
   lucide.createIcons();
+
+  if (id === "screen-dash") {
+    checkChangelog();
+  }
 };
 window.setScreen = setScreen;
 
@@ -912,6 +991,20 @@ const playWelcome = () => {
   setTimeout(() => {
     overlay.classList.remove("show");
   }, 2500);
+};
+
+/* Persistent first-time changelog announcement evaluation */
+const checkChangelog = () => {
+  const acked = localStorage.getItem("RELAY_UPDATES_ACK_V3");
+  if (acked !== "true" && currentU) {
+    document.getElementById("changelog-modal").classList.remove("hidden");
+    lucide.createIcons();
+  }
+};
+
+window.dismissChangelog = () => {
+  localStorage.setItem("RELAY_UPDATES_ACK_V3", "true");
+  document.getElementById("changelog-modal").classList.add("hidden");
 };
 
 onAuthStateChanged(auth, (user) => {
@@ -1117,7 +1210,7 @@ const renderNotifs = () => {
 
   if (!notifs.length) {
     list.innerHTML = `
-      <div class="flex flex-col items-center justify-center py-10 opacity-20">
+      <div class="flex flex-col items-center justify-center py-10 opacity-20 text-slate-400 dark:text-zinc-600">
         <i data-lucide="bell-off" class="w-10 h-10 mb-4"></i>
         <p class="text-[10px] font-black uppercase">No Alerts</p>
       </div>`;
@@ -1138,23 +1231,23 @@ const renderNotifs = () => {
         minute: "2-digit"
       });
       let icon = "info";
-      let color = "text-indigo-600 bg-indigo-50";
+      let color = "text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-950/40";
       if (n.type === "finalize") {
         icon = "star";
-        color = "text-emerald-600 bg-emerald-50";
+        color = "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40";
       }
       if (n.type === "veto") {
         icon = "alert-circle";
-        color = "text-rose-600 bg-rose-50";
+        color = "text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40";
       }
       return `
-        <div class="premium-card p-4 flex items-center gap-4">
+        <div class="premium-card p-4 flex items-center gap-4 dark:bg-zinc-900 dark:border-zinc-800">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center ${color}">
             <i data-lucide="${icon}" class="w-5 h-5"></i>
           </div>
           <div class="flex-1">
-            <p class="text-[10px] font-bold text-slate-800 leading-tight">${n.message}</p>
-            <p class="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">${time}</p>
+            <p class="text-[10px] font-bold text-slate-800 dark:text-zinc-200 leading-tight">${n.message}</p>
+            <p class="text-[8px] font-black text-slate-300 dark:text-zinc-500 uppercase tracking-widest mt-1">${time}</p>
           </div>
         </div>`;
     })
@@ -1168,7 +1261,7 @@ window.clearNotifs = async () => {
   list.innerHTML = `
     <div class="flex flex-col items-center justify-center py-10">
       <div class="w-6 h-6 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-      <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">
+      <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500">
         Purging Alerts...
       </p>
     </div>`;
@@ -1232,17 +1325,31 @@ window.handleJoin = async () => {
 const updateProfileUI = () => {
   const me = profiles[currentU?.uid];
   if (!me) return;
+  
+  const dashImg = document.getElementById("dash-avatar");
+  const dashIcon = document.getElementById("dash-avatar-icon");
+  const setImg = document.getElementById("set-avatar");
+  const setIcon = document.getElementById("set-avatar-icon");
+
   if (me.photo) {
-    document.getElementById("dash-avatar").src = me.photo;
-    document.getElementById("dash-avatar").classList.remove("hidden");
-    document.getElementById("dash-avatar-icon").classList.add("hidden");
-    document.getElementById("set-avatar").src = me.photo;
-    document.getElementById("set-avatar").classList.remove("hidden");
-    document.getElementById("set-avatar-icon").classList.add("hidden");
+    dashImg.src = me.photo;
+    dashImg.classList.remove("hidden");
+    dashIcon.classList.add("hidden");
+    setImg.src = me.photo;
+    setImg.classList.remove("hidden");
+    setIcon.classList.add("hidden");
+  } else {
+    dashImg.src = "";
+    dashImg.classList.add("hidden");
+    dashIcon.classList.remove("hidden");
+    setImg.src = "";
+    setImg.classList.add("hidden");
+    setIcon.classList.remove("hidden");
   }
   document.getElementById("set-fname").value = me.firstName || "";
   document.getElementById("set-lname").value = me.lastName || "";
 };
+
 window.saveProfile = async () => {
   const sAvatar = document.getElementById("set-avatar");
   const data = {
@@ -1258,20 +1365,53 @@ window.saveProfile = async () => {
     showToast("Identity Synced");
   } catch (e) {
     console.error(e);
+    showToast("Cloud Sync Error");
   }
 };
 
+/* Client-side high-performance downscaling & compression */
 window.previewAvatar = (e, t) => {
   const f = e.target.files[0];
   if (!f) return;
   const r = new FileReader();
   r.onload = (ev) => {
-    const i = document.getElementById(t);
-    i.src = ev.target.result;
-    i.classList.remove("hidden");
-    if (t === "signup-avatar-preview")
-      document.getElementById("signup-avatar-icon").classList.add("hidden");
-    else document.getElementById("set-avatar-icon").classList.add("hidden");
+    const img = new Image();
+    img.onload = () => {
+      // Downscale to max 160x160 for high quality but lightweight avatar to guarantee Firestore write safety (max 1MB doc size)
+      const maxDim = 160;
+      let w = img.width;
+      let h = img.height;
+      if (w > h) {
+        if (w > maxDim) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        }
+      } else {
+        if (h > maxDim) {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+      }
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      
+      // Compress with 0.75 quality JPEG
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      
+      const i = document.getElementById(t);
+      i.src = dataUrl;
+      i.classList.remove("hidden");
+      if (t === "signup-avatar-preview") {
+        document.getElementById("signup-avatar-icon").classList.add("hidden");
+      } else {
+        document.getElementById("set-avatar-icon").classList.add("hidden");
+      }
+    };
+    img.src = ev.target.result;
   };
   r.readAsDataURL(f);
 };
@@ -1282,11 +1422,11 @@ window.renderRelayList = () => {
     .map(
       (c) => `
         <button onclick="switchRelay('${c}')"
-          class="w-full bg-white border border-slate-100 p-5 rounded-3xl text-left flex justify-between items-center active:scale-95 transition-transform">
-          <span class="text-[11px] font-black text-slate-800 uppercase tracking-widest italic">
+          class="w-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-5 rounded-3xl text-left flex justify-between items-center active:scale-95 transition-transform">
+          <span class="text-[11px] font-black text-slate-800 dark:text-zinc-100 uppercase tracking-widest italic">
             RELAY ${c}
           </span>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-zinc-500"></i>
         </button>`
     )
     .join("");
@@ -1308,16 +1448,16 @@ window.renderMembers = () => {
     const p = profiles[uid] || { firstName: "User" };
     const isMe = uid === currentU.uid;
     list.innerHTML += `
-      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+      <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-950 rounded-2xl border dark:border-zinc-850">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-white overflow-hidden border">
+          <div class="w-8 h-8 rounded-full bg-white overflow-hidden border dark:border-zinc-800">
             ${
               p.photo
                 ? `<img src="${p.photo}" class="w-full h-full object-cover">`
-                : `<i data-lucide="user" class="w-3 h-3 text-slate-300 m-2.5"></i>`
+                : `<i data-lucide="user" class="w-3 h-3 text-slate-300 dark:text-zinc-600 m-2.5"></i>`
             }
           </div>
-          <span class="text-[10px] font-black text-slate-600 uppercase">${p.firstName}</span>
+          <span class="text-[10px] font-black text-slate-600 dark:text-zinc-300 uppercase">${p.firstName}</span>
         </div>
         ${
           isAdm && !isMe
@@ -1376,7 +1516,47 @@ window.handleDelete = async () => {
   }
 };
 
-window.openModal = (id) => document.getElementById(id).classList.add("active");
+/* Interactive Toggle Switch State Sync & Dark mode state propagation */
+window.toggleDarkMode = () => {
+  const html = document.documentElement;
+  const isDark = html.classList.toggle("dark");
+  localStorage.setItem("RELAY_DARK_MODE", isDark ? "true" : "false");
+  
+  // Instant active switch micro-interactions
+  const knob = document.getElementById("dark-toggle-knob");
+  const btn = document.getElementById("btn-dark-toggle");
+  if (isDark) {
+    knob.className = "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-5";
+    btn.className = "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-indigo-600";
+  } else {
+    knob.className = "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0";
+    btn.className = "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-slate-200";
+  }
+  
+  // Rerender active calendar views to instantly align custom ring conic gradients and masks to selected theme preferences
+  renderCal();
+  renderDay();
+};
+
+const initDarkToggleUI = () => {
+  const isDark = document.documentElement.classList.contains("dark");
+  const knob = document.getElementById("dark-toggle-knob");
+  const btn = document.getElementById("btn-dark-toggle");
+  if (isDark) {
+    knob.className = "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-5";
+    btn.className = "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-indigo-600";
+  } else {
+    knob.className = "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0";
+    btn.className = "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-slate-200";
+  }
+};
+
+window.openModal = (id) => {
+  document.getElementById(id).classList.add("active");
+  if (id === "modal-settings") {
+    initDarkToggleUI();
+  }
+};
 window.closeModal = (id) => document.getElementById(id).classList.remove("active");
 window.toggleAuth = (m) => {
   document.getElementById("auth-login").classList.toggle("hidden", m === "signup");
@@ -1417,24 +1597,24 @@ const appendUnavailSlotRow = (from = "", to = "") => {
   const id = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const div = document.createElement("div");
   div.className =
-    "flex items-center gap-2 bg-white border border-slate-100 rounded-2xl p-3";
+    "flex items-center gap-2 bg-white dark:bg-zinc-950 border border-slate-100 dark:border-zinc-850 rounded-2xl p-3";
   div.setAttribute("data-slot-id", id);
   div.innerHTML = `
     <div class="flex-1 flex items-center gap-2">
       <div class="flex flex-col flex-1">
-        <label class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+        <label class="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest ml-1">
           From
         </label>
         <input type="time"
-               class="w-full bg-slate-50 border border-slate-100 p-2 rounded-xl text-xs"
+               class="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-2 rounded-xl text-xs dark:text-white"
                value="${from}">
       </div>
       <div class="flex flex-col flex-1">
-        <label class="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">
+        <label class="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest ml-1">
           To
         </label>
         <input type="time"
-               class="w-full bg-slate-50 border border-slate-100 p-2 rounded-xl text-xs"
+               class="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-2 rounded-xl text-xs dark:text-white"
                value="${to}">
       </div>
     </div>
@@ -1678,7 +1858,7 @@ window.openSuggestModal = (mode) => {
   body.innerHTML = `
     <div class="flex flex-col items-center justify-center py-10">
       <div class="w-6 h-6 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-      <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">
+      <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500">
         Scanning Team Cloud...
       </p>
     </div>`;
@@ -1774,7 +1954,7 @@ const renderTimeSuggestions = (sugg) => {
   const body = document.getElementById("suggest-body");
   if (!sugg.length) {
     body.innerHTML = `
-      <div class="flex flex-col items-center justify-center py-10 text-slate-300">
+      <div class="flex flex-col items-center justify-center py-10 text-slate-300 dark:text-zinc-700">
         <i data-lucide="alert-triangle" class="w-8 h-8 mb-3"></i>
         <p class="text-[10px] font-black uppercase tracking-[0.3em]">
           No Perfect Slots
@@ -1797,16 +1977,16 @@ const renderTimeSuggestions = (sugg) => {
       return `
         <button
           onclick="applySuggestedTime('${s.dateKey}','${s.start}','${s.end}')"
-          class="w-full premium-card p-4 flex items-center justify-between active:scale-[0.98] transition-transform">
+          class="w-full premium-card p-4 flex items-center justify-between active:scale-[0.98] transition-transform dark:bg-zinc-900 dark:border-zinc-800">
           <div class="text-left">
-            <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">
+            <p class="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
               ${label}
             </p>
-            <p class="text-sm font-black text-slate-900 mt-0.5">
+            <p class="text-sm font-black text-slate-900 dark:text-white mt-0.5">
               ${s.start} – ${s.end}
             </p>
           </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-zinc-600"></i>
         </button>`;
     })
     .join("");
@@ -1839,7 +2019,11 @@ window.applySuggestedTime = async (dk, start, end) => {
       });
     }
     selDate = dk;
-    document.getElementById("detail-date").innerText = fromKey(dk).toLocaleDateString(
+    const targetDate = fromKey(dk);
+    // Align calendar view month to the selected suggestion month
+    viewDate.setFullYear(targetDate.getFullYear());
+    viewDate.setMonth(targetDate.getMonth());
+    document.getElementById("detail-date").innerText = targetDate.toLocaleDateString(
       "default",
       { weekday: "long", month: "short", day: "numeric" }
     );
@@ -1922,7 +2106,7 @@ const renderDaySuggestions = (sugg) => {
   const body = document.getElementById("suggest-body");
   if (!sugg.length) {
     body.innerHTML = `
-      <div class="flex flex-col items-center justify-center py-10 text-slate-300">
+      <div class="flex flex-col items-center justify-center py-10 text-slate-300 dark:text-zinc-700">
         <i data-lucide="calendar-x" class="w-8 h-8 mb-3"></i>
         <p class="text-[10px] font-black uppercase tracking-[0.3em]">
           No Ideal Days
@@ -1945,16 +2129,16 @@ const renderDaySuggestions = (sugg) => {
       return `
         <button
           onclick="jumpToDay('${s.dateKey}')"
-          class="w-full premium-card p-4 flex items-center justify-between active:scale-[0.98] transition-transform">
+          class="w-full premium-card p-4 flex items-center justify-between active:scale-[0.98] transition-transform dark:bg-zinc-900 dark:border-zinc-800">
           <div class="text-left">
-            <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">
+            <p class="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
               ${label}
             </p>
-            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
+            <p class="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mt-1">
               ${s.confirmed ? "Existing plan" : "Open & alignable"}
             </p>
           </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-zinc-600"></i>
         </button>`;
     })
     .join("");
@@ -1963,7 +2147,11 @@ const renderDaySuggestions = (sugg) => {
 
 window.jumpToDay = (dk) => {
   selDate = dk;
-  document.getElementById("detail-date").innerText = fromKey(dk).toLocaleDateString(
+  const targetDate = fromKey(dk);
+  // Align calendar view month to the selected suggestion month
+  viewDate.setFullYear(targetDate.getFullYear());
+  viewDate.setMonth(targetDate.getMonth());
+  document.getElementById("detail-date").innerText = targetDate.toLocaleDateString(
     "default",
     { weekday: "long", month: "short", day: "numeric" }
   );
@@ -1971,6 +2159,62 @@ window.jumpToDay = (dk) => {
   renderDay();
   switchDashTab("cal");
   closeModal("modal-suggest");
+};
+
+/* Dynamically align and toggle Active States in tactile planning hotbar (Zero-repaint optimization) */
+const updateFooterAvailabilityUI = (dayStats) => {
+  const footerContainer = document.getElementById("footer-availability");
+  const btnFree = document.getElementById("btn-status-free");
+  const btnShift = document.getElementById("btn-status-shift");
+  const btnUnavail = document.getElementById("btn-status-unavail");
+  const btnReset = document.getElementById("btn-status-reset");
+
+  if (!footerContainer) return;
+
+  if (!selDate) {
+    footerContainer.classList.add("opacity-45", "pointer-events-none");
+    return;
+  }
+  footerContainer.classList.remove("opacity-45", "pointer-events-none");
+
+  const myStatus = dayStats[currentU?.uid] || null;
+  const isDark = document.documentElement.classList.contains("dark");
+
+  // GPU-friendly micro active transition classes (No layout recalculations)
+  const buttons = [
+    { el: btnFree, activeClass: isDark 
+        ? "bg-emerald-600 text-white shadow-md shadow-emerald-950/30 font-bold scale-[1.02]" 
+        : "bg-emerald-500 text-white shadow-md shadow-emerald-500/10 font-bold scale-[1.02]" },
+    { el: btnShift, activeClass: isDark 
+        ? "bg-rose-600 text-white shadow-md shadow-rose-950/30 font-bold scale-[1.02]" 
+        : "bg-rose-500 text-white shadow-md shadow-rose-500/10 font-bold scale-[1.02]" },
+    { el: btnUnavail, activeClass: isDark 
+        ? "bg-amber-600 text-white shadow-md shadow-amber-950/30 font-bold scale-[1.02]" 
+        : "bg-amber-500 text-white shadow-md shadow-amber-500/10 font-bold scale-[1.02]" }
+  ];
+
+  buttons.forEach(({ el }) => {
+    if (el) {
+      el.className = "flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 text-slate-400 dark:text-zinc-400";
+    }
+  });
+
+  if (btnReset) {
+    btnReset.className = "py-2 px-3 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 text-slate-500 dark:text-zinc-500";
+  }
+
+  // Inject optimized responsive design tokens on status matches
+  if (myStatus === "free" && btnFree) {
+    btnFree.className = `flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 ${buttons[0].activeClass}`;
+  } else if (myStatus === "shift" && btnShift) {
+    btnShift.className = `flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 ${buttons[1].activeClass}`;
+  } else if (myStatus === "unavail" && btnUnavail) {
+    btnUnavail.className = `flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 ${buttons[2].activeClass}`;
+  } else if (!myStatus && btnReset) {
+    btnReset.className = isDark 
+      ? "py-2 px-3 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 bg-zinc-800 text-zinc-100 font-bold scale-[1.02]"
+      : "py-2 px-3 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-[background-color,transform,color] duration-150 pointer-events-auto active:scale-95 bg-slate-800 text-slate-300 font-bold scale-[1.02]";
+  }
 };
 
 window.renderDay = () => {
@@ -1993,58 +2237,112 @@ window.renderDay = () => {
   let blocks = false;
   let anyPartialConflict = false;
 
+  // Refresh Footer status highlights
+  updateFooterAvailabilityUI(dayStats);
+
   members.forEach((uid) => {
     const s = dayStats[uid];
     const p = profiles[uid] || { firstName: "Sync..." };
+    const isMe = uid === currentU?.uid;
     if (s === "shift" || s === "unavail") blocks = true;
+
+    // Generate dynamic initials avatar fallback for perfect team alignment
+    let initials = "U";
+    if (p.firstName) {
+      initials = p.firstName.charAt(0).toUpperCase();
+      if (p.lastName) {
+        initials += p.lastName.charAt(0).toUpperCase();
+      }
+    }
 
     const personalSlots = dayUnavail[uid] || [];
     const partialConflict =
       plan && overlaps(plan.timeStart, plan.timeEnd, personalSlots);
     if (partialConflict) anyPartialConflict = true;
 
-    let icon = '<div class="w-2 h-2 rounded-full bg-slate-200"></div>';
-    if (plan) {
-      if (plan.acceptedBy?.includes(uid))
-        icon = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>';
-      else if (plan.rejectedBy?.includes(uid))
-        icon = '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>';
+    // Dynamic visually-pleasing teammate status labels for dark mode
+    let statusBadgeHTML = "";
+    if (partialConflict) {
+      statusBadgeHTML = `
+        <span class="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 border dark:border-amber-900/30">
+          Conflict
+        </span>`;
+    } else if (s === "free") {
+      statusBadgeHTML = `
+        <span class="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 text-[8px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 border dark:border-emerald-900/30">
+          Available
+        </span>`;
+    } else if (s === "shift") {
+      statusBadgeHTML = `
+        <span class="bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 text-[8px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 border dark:border-red-900/30">
+          Shift
+        </span>`;
+    } else if (s === "unavail") {
+      statusBadgeHTML = `
+        <span class="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 border dark:border-amber-900/30">
+          Busy
+        </span>`;
+    } else {
+      statusBadgeHTML = `
+        <span class="bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400 text-[8px] font-bold px-1.5 py-0.5 rounded-lg flex items-center gap-0.5">
+          Undecided
+        </span>`;
     }
 
+    // Dynamic clean RSVP state icons
+    let rsvpBadgeHTML = "";
+    if (plan) {
+      if (plan.acceptedBy?.includes(uid)) {
+        rsvpBadgeHTML = `
+          <div class="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded-lg border border-emerald-100 dark:border-emerald-900/20">
+            Accept
+          </div>`;
+      } else if (plan.rejectedBy?.includes(uid)) {
+        rsvpBadgeHTML = `
+          <div class="flex items-center gap-0.5 text-rose-600 dark:text-rose-400 text-[8px] font-extrabold bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded-lg border border-rose-100 dark:border-rose-900/20">
+            Decline
+          </div>`;
+      } else {
+        rsvpBadgeHTML = `
+          <div class="flex items-center gap-0.5 text-slate-400 dark:text-zinc-400 text-[8px] font-semibold bg-slate-50 dark:bg-zinc-900 px-1.5 py-0.5 rounded-lg">
+            Awaiting
+          </div>`;
+      }
+    }
+
+    // Inline Partial Unavailability detail render directly into Member card
+    let slotTimelineHTML = "";
+    if (personalSlots.length > 0) {
+      const times = personalSlots.map((sl) => `${sl.from}-${sl.to}`).join(", ");
+      slotTimelineHTML = `
+        <div class="mt-1 flex items-center gap-0.5 text-rose-600 dark:text-rose-400 text-[7.5px] font-bold uppercase bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded-lg w-max border border-rose-100 dark:border-rose-900/20 truncate max-w-full">
+          Blocked: ${times}
+        </div>`;
+    }
+
+    // Privacy protected (emails omitted) clean teammate card rendering
     list.innerHTML += `
-      <div class="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-50">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-slate-50 overflow-hidden border">
+      <div class="flex flex-col gap-1.5 p-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 hover:border-indigo-100 dark:hover:border-indigo-900 transition-colors shadow-sm">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-slate-50 to-slate-100 dark:from-zinc-800 dark:to-zinc-900 overflow-hidden border border-slate-200 dark:border-zinc-700 flex items-center justify-center font-extrabold text-[10px] text-indigo-600 dark:text-indigo-400 shrink-0">
             ${
               p.photo
                 ? `<img src="${p.photo}" class="w-full h-full object-cover">`
-                : `<i data-lucide="user" class="w-4 h-4 text-slate-300 m-2"></i>`
+                : initials
             }
           </div>
-          <span class="text-[10px] font-black text-slate-700 uppercase">
-            ${p.firstName}${uid === currentU.uid ? " (You)" : ""}
-          </span>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="text-[8px] font-black uppercase px-2 py-0.5 rounded-lg ${
-            partialConflict
-              ? "bg-amber-100 text-amber-700"
-              : s === "free"
-              ? "bg-emerald-50 text-emerald-600"
-              : s === "shift"
-              ? "bg-red-50 text-red-600"
-              : s === "unavail"
-              ? "bg-amber-50 text-amber-600"
-              : "bg-slate-50 text-slate-400"
-          }">
-            ${
-              partialConflict
-                ? "Time Conflict"
-                : s || "Not Set"
-            }
+          <div class="min-w-0 flex-1">
+            <p class="text-[10px] font-black text-slate-800 dark:text-zinc-100 uppercase truncate leading-none">
+              ${p.firstName || "User"} ${isMe ? '<span class="text-[7.5px] text-indigo-600 dark:text-indigo-400 font-extrabold tracking-widest bg-indigo-50 dark:bg-indigo-950/55 px-1 py-0.5 rounded ml-0.5">YOU</span>' : ''}
+            </p>
           </div>
-          ${icon}
         </div>
+        
+        <div class="flex flex-wrap items-center gap-1 mt-1">
+          ${statusBadgeHTML}
+          ${rsvpBadgeHTML}
+        </div>
+        ${slotTimelineHTML}
       </div>`;
   });
 
@@ -2066,9 +2364,9 @@ window.renderDay = () => {
         .map((s) => `${s.from} – ${s.to}`)
         .join(" • ");
       summaryList.innerHTML += `
-        <div class="flex items-center justify-between text-[9px] text-slate-600 bg-slate-50 rounded-2xl px-3 py-1.5">
-          <span class="font-black uppercase tracking-widest">${label}</span>
-          <span class="font-bold">${times}</span>
+        <div class="flex items-center justify-between text-[9px] text-slate-600 bg-slate-50 dark:bg-zinc-950 rounded-2xl px-3 py-1.5 border border-slate-100 dark:border-zinc-800">
+          <span class="font-black uppercase tracking-widest dark:text-zinc-300">${label}</span>
+          <span class="font-bold dark:text-zinc-100">${times}</span>
         </div>`;
     });
   } else {
@@ -2204,10 +2502,10 @@ window.renderAgenda = () => {
       const metaBlock =
         isConfirmed && (p.timeStart || p.address)
           ? `
-            <div class="space-y-2 pt-3 border-t border-slate-50">
+            <div class="space-y-2 pt-3 border-t border-slate-50 dark:border-zinc-800">
               ${
                 p.timeStart
-                  ? `<div class="flex items-center gap-2 text-slate-500">
+                  ? `<div class="flex items-center gap-2 text-slate-500 dark:text-zinc-400">
                        <i data-lucide="clock" class="w-3 h-3"></i>
                        <span class="text-[10px] font-bold">
                          ${p.timeStart}${p.timeEnd ? " - " + p.timeEnd : ""}
@@ -2217,7 +2515,7 @@ window.renderAgenda = () => {
               }
               ${
                 p.address
-                  ? `<div class="flex items-center gap-2 text-slate-500">
+                  ? `<div class="flex items-center gap-2 text-slate-500 dark:text-zinc-400">
                        <i data-lucide="map-pin" class="w-3 h-3"></i>
                        <span class="text-[10px] font-bold truncate">${p.address}</span>
                      </div>`
@@ -2233,27 +2531,27 @@ window.renderAgenda = () => {
               }
             </div>`
           : `
-            <div class="text-[9px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-2">
+            <div class="text-[9px] font-black text-slate-300 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
               <i data-lucide="users" class="w-3 h-3"></i>
               ${p.acceptedBy.length} of ${members.length} Ready
             </div>`;
 
       return `
-        <div class="premium-card p-5 relative overflow-hidden active:scale-[0.98] transition-transform"
+        <div class="premium-card p-5 relative overflow-hidden active:scale-[0.98] transition-transform dark:bg-zinc-900 dark:border-zinc-800"
              onclick="selDate='${dk}'; document.getElementById('detail-date').innerText='${dateLabel}'; renderCal(); renderDay(); switchDashTab('cal');">
           <div class="flex items-start justify-between mb-4">
             <div>
-              <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${dateLabel}</p>
-              <h4 class="text-lg font-black text-slate-900 tracking-tight mt-1">
+              <p class="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">${dateLabel}</p>
+              <h4 class="text-lg font-black text-slate-900 dark:text-white tracking-tight mt-1">
                 ${p.location || "Trip Details Pending"}
               </h4>
             </div>
             <span class="text-[8px] font-black uppercase px-2.5 py-1 rounded-full ${
               isConfirmed
-                ? "bg-emerald-100 text-emerald-600"
+                ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
                 : isOverride
-                ? "bg-amber-100 text-amber-700"
-                : "bg-indigo-100 text-indigo-600"
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
+                : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400"
             }">
               ${
                 isConfirmed
@@ -2271,6 +2569,71 @@ window.renderAgenda = () => {
   lucide.createIcons();
 };
 
+/* Render Conic-Gradient Availability Ring for calendar days */
+const getStatusRingGradient = (dk) => {
+  const dayStats = statuses[dk] || {};
+  const dayUnavail = unavailabilities[dk] || {};
+  const isDark = document.documentElement.classList.contains("dark");
+  const defaultColor = isDark ? "#27272a" : "#E2E8F0";
+  
+  if (!members || members.length === 0) {
+    return `conic-gradient(${defaultColor} 0% 100%)`;
+  }
+  
+  let green = 0;
+  let amber = 0;
+  let red = 0;
+  let gray = 0;
+  
+  members.forEach((uid) => {
+    const s = dayStats[uid];
+    const slots = dayUnavail[uid] || [];
+    if (s === "free") {
+      green++;
+    } else if (s === "shift") {
+      red++;
+    } else if (s === "unavail") {
+      amber++;
+    } else if (slots.length > 0) {
+      amber++;
+    } else {
+      gray++;
+    }
+  });
+  
+  const total = members.length;
+  const pGreen = (green / total) * 100;
+  const pAmber = (amber / total) * 100;
+  const pRed = (red / total) * 100;
+  const pGray = (gray / total) * 100;
+  
+  let current = 0;
+  let stops = [];
+  
+  if (green > 0) {
+    stops.push(`#10B981 ${current}% ${current + pGreen}%`);
+    current += pGreen;
+  }
+  if (amber > 0) {
+    stops.push(`#F59E0B ${current}% ${current + pAmber}%`);
+    current += pAmber;
+  }
+  if (red > 0) {
+    stops.push(`#EF4444 ${current}% ${current + pRed}%`);
+    current += pRed;
+  }
+  if (gray > 0) {
+    stops.push(`${defaultColor} ${current}% ${current + pGray}%`);
+    current += pGray;
+  }
+  
+  if (stops.length === 0) {
+    return `conic-gradient(${defaultColor} 0% 100%)`;
+  }
+  
+  return `conic-gradient(${stops.join(", ")})`;
+};
+
 window.renderCal = () => {
   const grid = document.getElementById("cal-grid");
   grid.innerHTML = "";
@@ -2280,16 +2643,27 @@ window.renderCal = () => {
     "default",
     { month: "long", year: "numeric" }
   );
+  
+  const todayKey = toKey(new Date());
+  const todayMidnight = fromKey(todayKey);
+  const isDark = document.documentElement.classList.contains("dark");
+
   const start = new Date(y, m, 1).getDay();
   const days = new Date(y, m + 1, 0).getDate();
 
   for (let i = 0; i < start; i++) grid.appendChild(document.createElement("div"));
 
   for (let i = 1; i <= days; i++) {
-    const dk = toKey(new Date(y, m, i));
+    const cellDate = new Date(y, m, i);
+    const dk = toKey(cellDate);
     const dayStats = statuses[dk] || {};
     const plan = plans[dk];
     const dayUnavail = unavailabilities[dk] || {};
+    
+    // Past and Current day calculations
+    const isPast = cellDate < todayMidnight;
+    const isToday = dk === todayKey;
+
     let hasBlocker = false;
     let freeCount = 0;
     members.forEach((uid) => {
@@ -2298,45 +2672,54 @@ window.renderCal = () => {
     });
 
     const el = document.createElement("div");
-    let bg = "bg-white border-slate-100 text-slate-700";
+    let bg = isDark ? "bg-zinc-900 border-zinc-800 text-zinc-100" : "bg-white border-slate-100 text-slate-700";
+    let maskBg = isDark ? "bg-zinc-900 text-zinc-100" : "bg-white text-slate-700";
+    
     if (plan && plan.status === "confirmed") {
       bg = "bg-indigo-600 text-white border-indigo-700 shadow-lg";
+      maskBg = "bg-indigo-600 text-white";
     } else if (plan && plan.status === "override") {
       bg = "bg-amber-500 text-white border-amber-600 shadow-lg";
+      maskBg = "bg-amber-500 text-white";
     } else if (hasBlocker) {
-      bg = "bg-slate-50 border-slate-100 text-slate-300";
+      bg = isDark ? "bg-black border-zinc-900 text-zinc-600" : "bg-slate-50 border-slate-100 text-slate-300";
+      maskBg = isDark ? "bg-black text-zinc-600" : "bg-slate-50 text-slate-400";
     } else if (freeCount === members.length && members.length > 0) {
-      bg = "bg-emerald-50 border-emerald-100 text-emerald-700";
+      bg = isDark ? "bg-emerald-950/40 border-emerald-900/60 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-700";
+      maskBg = isDark ? "bg-zinc-900 text-emerald-400" : "bg-emerald-50 text-emerald-700";
     }
-    if (dk === selDate) bg += " selected-day";
+    
+    if (dk === selDate) {
+      bg += " selected-day";
+    }
+
+    // High fidelity outline for current day, opacity attenuation for past days
+    let cellStyleString = "";
+    if (isToday) {
+      bg += " border-2 border-dashed border-indigo-600 dark:border-indigo-400";
+    }
+    if (isPast) {
+      cellStyleString = "opacity: 0.55;";
+    }
+    
     el.className =
       "calendar-day aspect-square rounded-2xl border flex flex-col items-center justify-center cursor-pointer overflow-hidden " +
       bg;
-    el.innerHTML = `<span class="text-[11px] font-black">${i}</span>`;
+    if (cellStyleString) {
+      el.setAttribute("style", cellStyleString);
+    }
 
-    const dots = document.createElement("div");
-    dots.className = "flex gap-0.5 mt-1";
-    members.forEach((uid) => {
-      const s = dayStats[uid];
-      const slots = dayUnavail[uid] || [];
-      if (s || slots.length) {
-        const d = document.createElement("div");
-        const hasSlots = slots.length > 0;
-        const baseClass =
-          s === "free"
-            ? "bg-free"
-            : s === "shift"
-            ? "bg-shift"
-            : s === "unavail"
-            ? "bg-busy"
-            : "bg-busy";
-        d.className = `status-dot ${baseClass} ${
-          hasSlots ? "partial" : ""
-        }`;
-        dots.appendChild(d);
-      }
-    });
-    el.appendChild(dots);
+    const ringGrad = getStatusRingGradient(dk);
+
+    // Inner mask blends dynamically to the back-cell color, making the status-ring outer-ring pop gorgeously
+    el.innerHTML = `
+      <div class="status-ring-container w-9 h-9 rounded-full flex items-center justify-center p-[3px] shadow-sm relative" style="background: ${ringGrad};">
+        <div class="inner-mask w-full h-full rounded-full flex items-center justify-center ${maskBg}">
+          <span class="text-[11px] font-black leading-none">${i}</span>
+        </div>
+        ${isToday ? `<span class="absolute -top-1.5 -right-1.5 w-2 h-2 bg-indigo-600 dark:bg-indigo-400 rounded-full ring-2 ring-white dark:ring-black animate-pulse"></span>` : ''}
+      </div>
+    `;
 
     if (plan && plan.status !== "confirmed") {
       const bar = document.createElement("div");
