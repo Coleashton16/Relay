@@ -211,6 +211,12 @@
       <h2 class="text-3xl font-black text-slate-900 tracking-tight italic uppercase">Relays</h2>
       <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">No active team detected</p>
     </div>
+    
+    <!-- Error Banner for Sync Issues -->
+    <div id="setup-error" class="hidden bg-rose-50 text-rose-600 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center mb-4">
+      Cloud Sync Failed (Permission Denied). Check Firebase Rules.
+    </div>
+
     <div id="setup-relay-list" class="space-y-3 mb-8 max-h-[300px] overflow-y-auto no-scrollbar"></div>
     <div class="mt-auto pb-10 space-y-4">
       <div class="premium-card p-6 border-indigo-100 bg-indigo-50/20">
@@ -620,6 +626,30 @@
 </div>
 
 <script type="module">
+/**
+ * REQUIRED FIREBASE FIRESTORE RULES (If you see "Failed to load relays", your test mode expired!):
+ * Go to Firebase Console > Firestore Database > Rules and paste:
+ * 
+ * rules_version = '2';
+ * service cloud.firestore {
+ *   match /databases/{database}/documents {
+ *     match /profiles/{userId} {
+ *       allow read: if request.auth != null;
+ *       allow write: if request.auth != null && request.auth.uid == userId;
+ *     }
+ *     match /users/{userId} {
+ *       allow read, write: if request.auth != null && request.auth.uid == userId;
+ *     }
+ *     match /relays/{relayId} {
+ *       allow read, write: if request.auth != null;
+ *       match /{document=**} {
+ *         allow read, write: if request.auth != null;
+ *       }
+ *     }
+ *   }
+ * }
+ */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
   getAuth,
@@ -689,6 +719,7 @@ const fromKey = (key) => new Date(`${key}T00:00:00`);
 
 const showToast = (msg) => {
   const t = document.getElementById("toast");
+  if (!t) return;
   document.getElementById("toast-msg").innerText = msg;
   t.classList.remove("opacity-0", "pointer-events-none", "-translate-y-5");
   t.classList.add("opacity-100", "translate-y-0");
@@ -700,14 +731,15 @@ const showToast = (msg) => {
 window.showToast = showToast;
 
 const setScreen = (id) => {
-  ["screen-auth", "screen-setup", "screen-dash"].forEach((s) =>
-    document.getElementById(s).classList.add("hidden")
-  );
-  document.getElementById(id).classList.remove("hidden");
-  document
-    .getElementById("screen-loading")
-    .classList.add("opacity-0", "pointer-events-none");
-  lucide.createIcons();
+  ["screen-auth", "screen-setup", "screen-dash"].forEach((s) => {
+    const el = document.getElementById(s);
+    if (el) el.classList.add("hidden");
+  });
+  const target = document.getElementById(id);
+  if (target) target.classList.remove("hidden");
+  const loading = document.getElementById("screen-loading");
+  if (loading) loading.classList.add("opacity-0", "pointer-events-none");
+  if (window.lucide) lucide.createIcons();
 };
 window.setScreen = setScreen;
 
@@ -738,6 +770,10 @@ onAuthStateChanged(auth, (user) => {
     stopSync();
     setScreen("screen-auth");
   }
+}, (error) => {
+  console.error("Auth state error:", error);
+  setScreen("screen-auth");
+  showToast("Auth Error");
 });
 
 window.handleLogin = async () => {
@@ -780,36 +816,50 @@ window.handlePassReset = () =>
 
 // ---------- GLOBAL SYNC ----------
 const initGlobalSync = () => {
-  unsubscribers.profiles = onSnapshot(collection(db, "profiles"), (s) => {
-    s.forEach((d) => {
-      profiles[d.id] = d.data();
-    });
-    updateProfileUI();
-    renderMembers();
-    renderDay();
-  });
+  try {
+    unsubscribers.profiles = onSnapshot(collection(db, "profiles"), (s) => {
+      s.forEach((d) => {
+        profiles[d.id] = d.data();
+      });
+      updateProfileUI();
+      renderMembers();
+      renderDay();
+    }, (err) => console.error("Profiles sync error:", err));
 
-  unsubscribers.relays = onSnapshot(
-    collection(db, "users", currentU.uid, "relays"),
-    (s) => {
-      joinedRids = [];
-      s.forEach((d) => joinedRids.push(d.id));
-      if (joinedRids.length === 0) {
-        activeRid = null;
-        localStorage.removeItem("RELAY_RID");
-        renderRelayList();
-        setScreen("screen-setup");
-      } else {
-        if (!activeRid || !joinedRids.includes(activeRid)) {
-          activeRid = joinedRids[0];
-          localStorage.setItem("RELAY_RID", activeRid);
+    unsubscribers.relays = onSnapshot(
+      collection(db, "users", currentU.uid, "relays"),
+      (s) => {
+        joinedRids = [];
+        s.forEach((d) => joinedRids.push(d.id));
+        const errEl = document.getElementById("setup-error");
+        if (errEl) errEl.classList.add("hidden");
+        if (joinedRids.length === 0) {
+          activeRid = null;
+          localStorage.removeItem("RELAY_RID");
+          renderRelayList();
+          setScreen("screen-setup");
+        } else {
+          if (!activeRid || !joinedRids.includes(activeRid)) {
+            activeRid = joinedRids[0];
+            localStorage.setItem("RELAY_RID", activeRid);
+          }
+          syncRelay();
+          renderRelayList();
+          setScreen("screen-dash");
         }
-        syncRelay();
-        renderRelayList();
-        setScreen("screen-dash");
+      },
+      (err) => {
+        console.error("Relays sync error:", err);
+        showToast("Sync Error: " + (err.code || "failed"));
+        const errEl = document.getElementById("setup-error");
+        if (errEl) errEl.classList.remove("hidden");
+        setScreen("screen-setup");
       }
-    }
-  );
+    );
+  } catch (e) {
+    console.error("Init sync error:", e);
+    setScreen("screen-auth");
+  }
 };
 
 const stopSync = () => {
@@ -835,7 +885,7 @@ const syncRelay = () => {
         .getElementById("btn-delete")
         .classList.toggle("hidden", curRelay.creator !== currentU.uid);
     }
-  });
+  }, (e) => console.error("Meta sync error:", e));
 
   unsubscribers.members = onSnapshot(
     collection(db, "relays", activeRid, "members"),
@@ -850,7 +900,8 @@ const syncRelay = () => {
       renderCal();
       renderDay();
       if (dashTab === "agenda") renderAgenda();
-    }
+    },
+    (e) => console.error("Members sync error:", e)
   );
 
   unsubscribers.statuses = onSnapshot(
@@ -864,7 +915,8 @@ const syncRelay = () => {
       });
       renderCal();
       renderDay();
-    }
+    },
+    (e) => console.error("Statuses sync error:", e)
   );
 
   unsubscribers.plans = onSnapshot(
@@ -878,7 +930,8 @@ const syncRelay = () => {
       renderCal();
       renderDay();
       if (dashTab === "agenda") renderAgenda();
-    }
+    },
+    (e) => console.error("Plans sync error:", e)
   );
 
   unsubscribers.notifs = onSnapshot(
@@ -893,7 +946,8 @@ const syncRelay = () => {
       });
       notifs.sort((a, b) => b.createdAt - a.createdAt);
       renderNotifs();
-    }
+    },
+    (e) => console.error("Notifs sync error:", e)
   );
 };
 
@@ -915,6 +969,7 @@ const createNotif = async (type, msg, relayId) => {
 const renderNotifs = () => {
   const list = document.getElementById("notif-list");
   const badge = document.getElementById("notif-badge");
+  if (!list || !badge) return;
 
   if (!notifs.length) {
     list.innerHTML = `
@@ -924,7 +979,7 @@ const renderNotifs = () => {
       </div>`;
     badge.classList.remove("active");
     badge.innerText = "0";
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
     return;
   }
   badge.classList.add("active");
@@ -960,7 +1015,7 @@ const renderNotifs = () => {
         </div>`;
     })
     .join("");
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 };
 window.clearNotifs = async () => {
   if (!activeRid || !notifs.length) return;
@@ -1005,6 +1060,7 @@ window.handleCreate = async () => {
     localStorage.setItem("RELAY_RID", code);
   } catch (e) {
     console.error(e);
+    showToast("Create Failed: " + (e.code || "error"));
   }
 };
 
@@ -1027,6 +1083,7 @@ window.handleJoin = async () => {
     createNotif("info", `${me} joined the team!`, code);
   } catch (e) {
     console.error(e);
+    showToast("Join Failed: " + (e.code || "error"));
   }
 };
 
@@ -1034,16 +1091,27 @@ window.handleJoin = async () => {
 const updateProfileUI = () => {
   const me = profiles[currentU?.uid];
   if (!me) return;
+  const dashAvatar = document.getElementById("dash-avatar");
+  const dashIcon = document.getElementById("dash-avatar-icon");
+  const setAvatar = document.getElementById("set-avatar");
+  const setIcon = document.getElementById("set-avatar-icon");
+  
   if (me.photo) {
-    document.getElementById("dash-avatar").src = me.photo;
-    document.getElementById("dash-avatar").classList.remove("hidden");
-    document.getElementById("dash-avatar-icon").classList.add("hidden");
-    document.getElementById("set-avatar").src = me.photo;
-    document.getElementById("set-avatar").classList.remove("hidden");
-    document.getElementById("set-avatar-icon").classList.add("hidden");
+    if (dashAvatar) {
+      dashAvatar.src = me.photo;
+      dashAvatar.classList.remove("hidden");
+    }
+    if (dashIcon) dashIcon.classList.add("hidden");
+    if (setAvatar) {
+      setAvatar.src = me.photo;
+      setAvatar.classList.remove("hidden");
+    }
+    if (setIcon) setIcon.classList.add("hidden");
   }
-  document.getElementById("set-fname").value = me.firstName || "";
-  document.getElementById("set-lname").value = me.lastName || "";
+  const setF = document.getElementById("set-fname");
+  const setL = document.getElementById("set-lname");
+  if (setF) setF.value = me.firstName || "";
+  if (setL) setL.value = me.lastName || "";
 };
 window.saveProfile = async () => {
   const sAvatar = document.getElementById("set-avatar");
@@ -1051,7 +1119,7 @@ window.saveProfile = async () => {
     firstName: document.getElementById("set-fname").value.trim(),
     lastName: document.getElementById("set-lname").value.trim(),
     photo:
-      sAvatar.src && sAvatar.src.startsWith("data:")
+      sAvatar && sAvatar.src && sAvatar.src.startsWith("data:")
         ? sAvatar.src
         : profiles[currentU.uid]?.photo || ""
   };
@@ -1080,6 +1148,7 @@ window.previewAvatar = (e, t) => {
 
 window.renderRelayList = () => {
   const list = document.getElementById("setup-relay-list");
+  if (!list) return;
   list.innerHTML = joinedRids
     .map(
       (c) => `
@@ -1092,7 +1161,7 @@ window.renderRelayList = () => {
         </button>`
     )
     .join("");
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 };
 window.switchRelay = (c) => {
   activeRid = c;
@@ -1130,7 +1199,7 @@ window.renderMembers = () => {
         }
       </div>`;
   });
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 };
 window.kick = async (uid) => {
   if (!confirm("Kick member?")) return;
@@ -1343,6 +1412,7 @@ window.handlePlanReset = async () => {
 window.renderDay = () => {
   const empty = document.getElementById("day-empty");
   const cont = document.getElementById("day-content");
+  if (!empty || !cont) return;
   if (!selDate) {
     empty.classList.remove("hidden");
     cont.classList.add("hidden");
@@ -1354,6 +1424,7 @@ window.renderDay = () => {
   const dayStats = statuses[selDate] || {};
   const plan = plans[selDate];
   const list = document.getElementById("day-members");
+  if (!list) return;
   list.innerHTML = "";
 
   let blocks = false;
@@ -1470,12 +1541,13 @@ window.renderDay = () => {
       ? "w-full bg-slate-100 text-slate-300 py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed flex items-center justify-center gap-2"
       : "w-full bg-indigo-600 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95";
   }
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 };
 
 window.renderAgenda = () => {
   const list = document.getElementById("agenda-list");
   const empty = document.getElementById("agenda-empty");
+  if (!list || !empty) return;
   const sortedKeys = Object.keys(plans).sort((a, b) => a.localeCompare(b));
 
   if (!sortedKeys.length) {
@@ -1544,11 +1616,12 @@ window.renderAgenda = () => {
         </div>`;
     })
     .join("");
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 };
 
 window.renderCal = () => {
   const grid = document.getElementById("cal-grid");
+  if (!grid) return;
   grid.innerHTML = "";
   const y = viewDate.getFullYear();
   const m = viewDate.getMonth();
@@ -1620,7 +1693,17 @@ window.renderCal = () => {
   }
 };
 
-lucide.createIcons();
+// Safety timeout to prevent infinite loading screen
+setTimeout(() => {
+  const loading = document.getElementById("screen-loading");
+  if (loading && !loading.classList.contains("opacity-0")) {
+    console.warn("Loading timeout reached. Forcing auth screen.");
+    setScreen("screen-auth");
+    showToast("Connection Slow/Failed");
+  }
+}, 10000);
+
+if (window.lucide) lucide.createIcons();
 </script>
 
 </body>
