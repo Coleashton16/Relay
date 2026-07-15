@@ -119,6 +119,31 @@
       from { transform: scale(0); }
       to   { transform: scale(1); }
     }
+
+    /* DARK MODE OVERRIDES - TRUE BLACK OLED */
+    body.dark { background-color: #000000; }
+    body.dark .app-container { background: #000000; box-shadow: none; }
+    body.dark .premium-card { background: #0a0a0a; border-color: #222222; box-shadow: none; }
+    body.dark header, body.dark .tab-bar { background: #000000; border-color: #222222; backdrop-filter: none; }
+    body.dark input, body.dark textarea { background: #111111 !important; color: #ffffff !important; border-color: #333333 !important; }
+    body.dark .bg-white { background-color: #000000 !important; }
+    body.dark .text-slate-900 { color: #ffffff !important; }
+    body.dark .text-slate-700 { color: #e4e4e7 !important; }
+    body.dark .text-slate-600 { color: #a1a1aa !important; }
+    body.dark .text-slate-400 { color: #71717a !important; }
+    body.dark .text-slate-300 { color: #d4d4d8 !important; }
+    body.dark .border-slate-100 { border-color: #222222 !important; }
+    body.dark .bg-slate-50 { background-color: #111111 !important; }
+    body.dark .bg-slate-100 { background-color: #222222 !important; }
+    body.dark .bg-slate-200 { background-color: #222222 !important; }
+    body.dark .bg-slate-900 { background-color: #000000 !important; border: 1px solid #333333; }
+    body.dark .bg-indigo-50\/20 { background-color: #1e1b4b !important; }
+    body.dark .modal-slide-up { background: #000000; }
+    body.dark .text-indigo-600 { color: #818cf8 !important; }
+    body.dark .border-white\/40 { border-color: #333333 !important; }
+    body.dark #toast { background: #111111; border: 1px solid #333333; }
+    body.dark #modal-update { background: rgba(0,0,0,0.95) !important; }
+    body.dark .tab-bar { background: #000000; }
   </style>
 </head>
 <body>
@@ -617,10 +642,34 @@
         </button>
       </div>
 
+      <!-- DARK MODE TOGGLE -->
+      <div class="premium-card p-2 space-y-1 mt-4">
+        <button onclick="toggleDarkMode()" class="w-full flex items-center justify-between p-5 text-slate-600 active:bg-slate-50 rounded-2xl transition-colors">
+          <span class="text-[10px] font-black uppercase tracking-widest">Dark Mode</span>
+          <i id="dark-mode-icon" data-lucide="moon" class="w-4 h-4 opacity-30"></i>
+        </button>
+      </div>
+
       <button onclick="handleLogout()"
               class="w-full py-10 text-slate-300 font-black uppercase text-[10px] tracking-[0.5em] active:text-rose-500">
         End Session & Logout
       </button>
+    </div>
+  </section>
+
+  <!-- UPDATE MODAL (One-time) -->
+  <section id="modal-update" class="absolute inset-0 z-[600] bg-slate-900/90 flex flex-col items-center justify-center p-8 hidden">
+    <div class="premium-card p-8 w-full text-center">
+      <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <i data-lucide="sparkles" class="w-8 h-8 text-white"></i>
+      </div>
+      <h3 class="text-xl font-black text-slate-900 mb-1 italic">Relay Updates</h3>
+      <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-6">What's New</p>
+      <ul class="text-left text-[11px] font-bold text-slate-600 space-y-3 mb-8">
+        <li class="flex gap-2"><i data-lucide="shield-alert" class="w-4 h-4 text-rose-500"></i> <span><b>Reliability Tracking:</b> Users missing &gt;30% of events are flagged as FLAKERS.</span></li>
+        <li class="flex gap-2"><i data-lucide="moon" class="w-4 h-4 text-indigo-500"></i> <span><b>Dark Mode:</b> Toggle in Settings to save your eyes at night.</span></li>
+      </ul>
+      <button onclick="closeUpdateModal()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-transform">Got it</button>
     </div>
   </section>
 </div>
@@ -760,11 +809,53 @@ const switchDashTab = (t) => {
 };
 window.switchDashTab = switchDashTab;
 
+// ---------- DARK MODE & UPDATES ----------
+const initDarkMode = () => {
+  if (localStorage.getItem("relay_dark_mode") === "1") {
+    document.body.classList.add("dark");
+    const icon = document.getElementById("dark-mode-icon");
+    if (icon) icon.setAttribute("data-lucide", "sun");
+  }
+  if (window.lucide) lucide.createIcons();
+};
+
+window.toggleDarkMode = () => {
+  document.body.classList.toggle("dark");
+  const isDark = document.body.classList.contains("dark");
+  localStorage.setItem("relay_dark_mode", isDark ? "1" : "0");
+  const icon = document.getElementById("dark-mode-icon");
+  if (icon) {
+    icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
+    if (window.lucide) lucide.createIcons();
+  }
+};
+
+window.closeUpdateModal = () => {
+  const m = document.getElementById("modal-update");
+  if (m) m.classList.add("hidden");
+  localStorage.setItem("relay_update_seen", "1");
+};
+
+// ---------- RELIABILITY TRACKING ----------
+const isFlaker = (uid) => {
+  const confirmed = Object.values(plans).filter(p => p.status === "confirmed");
+  if (confirmed.length < 3) return false; // Need minimum sample
+  const missed = confirmed.filter(p => !p.acceptedBy?.includes(uid)).length;
+  return (missed / confirmed.length) > 0.3;
+};
+
 // ---------- AUTH ----------
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentU = user;
     initGlobalSync();
+    initDarkMode();
+    if (!localStorage.getItem("relay_update_seen")) {
+      setTimeout(() => {
+        const um = document.getElementById("modal-update");
+        if (um) um.classList.remove("hidden");
+      }, 1200);
+    }
   } else {
     currentU = null;
     stopSync();
@@ -1178,6 +1269,7 @@ window.renderMembers = () => {
   members.forEach((uid) => {
     const p = profiles[uid] || { firstName: "User" };
     const isMe = uid === currentU.uid;
+    const flakerTag = isFlaker(uid) ? `<span class="text-[7px] font-black text-rose-500 bg-rose-100 px-1.5 py-0.5 rounded ml-1">FLAKER</span>` : '';
     list.innerHTML += `
       <div class="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
         <div class="flex items-center gap-3">
@@ -1188,7 +1280,7 @@ window.renderMembers = () => {
                 : `<i data-lucide="user" class="w-3 h-3 text-slate-300 m-2.5"></i>`
             }
           </div>
-          <span class="text-[10px] font-black text-slate-600 uppercase">${p.firstName}</span>
+          <span class="text-[10px] font-black text-slate-600 uppercase flex items-center">${p.firstName}${flakerTag}</span>
         </div>
         ${
           isAdm && !isMe
@@ -1439,6 +1531,7 @@ window.renderDay = () => {
       else if (plan.rejectedBy?.includes(uid))
         icon = '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>';
     }
+    const flakerTag = isFlaker(uid) ? `<span class="text-[7px] font-black text-rose-500 bg-rose-100 px-1.5 py-0.5 rounded ml-1">FLAKER</span>` : '';
     list.innerHTML += `
       <div class="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-50">
         <div class="flex items-center gap-3">
@@ -1449,8 +1542,8 @@ window.renderDay = () => {
                 : `<i data-lucide="user" class="w-4 h-4 text-slate-300 m-2"></i>`
             }
           </div>
-          <span class="text-[10px] font-black text-slate-700 uppercase">
-            ${p.firstName}${uid === currentU.uid ? " (You)" : ""}
+          <span class="text-[10px] font-black text-slate-700 uppercase flex items-center">
+            ${p.firstName}${uid === currentU.uid ? " (You)" : ""}${flakerTag}
           </span>
         </div>
         <div class="flex items-center gap-3">
